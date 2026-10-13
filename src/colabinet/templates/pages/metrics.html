@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, card_title %}
+{% macro query_option(name, value, text, selected, accessible_label=None, kind='checkbox') -%}
+<label class="cb-query-option"><input class="input" type="{{ kind }}" name="{{ name }}" value="{{ value }}" {% if selected %}checked{% endif %}{% if accessible_label %} aria-label="{{ accessible_label }}"{% endif %}><span>{{ text }}</span></label>
+{%- endmacro %}
+{% block title %}Metrics{% endblock %}
+{% block crumbs %}<h1>Metrics</h1>{% endblock %}
+{% block actions %}
+  {% if saved %}
+  <select class="select cb-saved" aria-label="Saved queries" onchange="if (this.value) cbNavigate('/metrics?saved=' + this.value)">
+    <option value="">Saved queries…</option>
+    {% for q in saved %}<option value="{{ q.id }}" {% if q.id == saved_id %}selected{% endif %}>{{ q.name }}</option>{% endfor %}
+  </select>
+  {% if saved_id %}<button class="btn" data-size="sm" data-variant="ghost" hx-post="/ui/metrics/saved/{{ saved_id }}/delete" hx-confirm="Delete this saved query?" hx-swap="none">{{ icon('trash') }}Delete</button>{% endif %}
+  {% endif %}
+{% endblock %}
+{% block content %}
+<div class="tabs" id="metrics-tabs">
+  <nav role="tablist" aria-orientation="horizontal">
+    <button type="button" role="tab" id="tab-builder" aria-controls="panel-builder" aria-selected="true">Builder</button>
+    <button type="button" role="tab" id="tab-sql" aria-controls="panel-sql" aria-selected="false">SQL (read-only)</button>
+  </nav>
+  <div role="tabpanel" id="panel-builder" aria-labelledby="tab-builder">
+    <form id="metrics-form" class="form" hx-post="/ui/metrics/run" hx-trigger="load, change" hx-target="#metrics-result" hx-swap="innerHTML" hx-indicator="#metrics-state">
+      <div class="cb-query-toolbar">
+        <fieldset class="cb-query-time"><legend>Time range</legend><div class="cb-query-options">
+          {% for time in times %}{{ query_option('time', time, {'24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days', 'all': 'All time'}[time], spec.time == time, kind='radio') }}{% endfor %}
+        </div><span id="metrics-state" class="cb-query-state" role="status" aria-live="polite"><span class="cb-query-state-default">Results update below as you change these controls.</span><span class="cb-query-state-running">Running query…</span></span></fieldset>
+        <div class="cb-save-bar">
+          <input class="input cb-save-name" name="name" aria-label="Query name" placeholder="Name this query to save it">
+          <button type="button" class="btn" data-variant="outline" hx-post="/ui/metrics/save" hx-include="#metrics-form" hx-swap="none">{{ icon('save') }}Save query</button>
+        </div>
+      </div>
+      <div class="cb-qb">
+        <section class="card"><header>{{ card_title('Group by', 'layers') }}<p>Choose dimensions to compare.</p></header><section class="cb-query-sections">
+          {% for heading, choices in [
+            ('Model & hardware', [('gpu', 'GPU'), ('model', 'Model'), ('model_kv', 'Model + KV'), ('kv', 'KV cache'), ('engine', 'Engine')]),
+            ('Request details', [('session', 'Session'), ('client', 'Client'), ('path', 'API path'), ('prompt_bucket', 'Prompt size')]),
+            ('Time', [('day', 'Day')])
+          ] %}
+          <fieldset class="cb-query-section"><legend>{{ heading }}</legend><div class="cb-query-options">
+            {% for value, text in choices if value in groups %}{{ query_option('group_by', value, text, value in spec.group_by) }}{% endfor %}
+          </div></fieldset>
+          {% endfor %}
+        </section></section>
+        <section class="card"><header>{{ card_title('Measures', 'gauge') }}<p>P50 = median · P90 = 90th percentile</p></header><section class="cb-query-sections">
+          <fieldset class="cb-query-section"><legend>Throughput</legend><p class="cb-query-unit">Tokens per second</p>
+            {% for prefix, text in [('gen_tps', 'Generation'), ('prefill_tps', 'Prefill'), ('e2e_tps', 'End-to-end')] %}
+            <div class="cb-percentile-row"><span>{{ text }}</span>
+              {% for percentile in ['p50', 'p90'] %}{% set value = prefix ~ '_' ~ percentile %}
+                {% if value in measures %}{{ query_option('measures', value, percentile | upper, value in spec.measures, text ~ ' ' ~ (percentile | upper) ~ ', tokens per second') }}{% else %}<span class="cb-percentile-empty" aria-hidden="true">—</span>{% endif %}
+              {% endfor %}
+            </div>
+            {% endfor %}
+          </fieldset>
+          <fieldset class="cb-query-section"><legend>Latency</legend><p class="cb-query-unit">Milliseconds</p>
+            <div class="cb-percentile-row"><span title="Time to first token (TTFT)">First token</span>
+              {% for percentile in ['p50', 'p90'] %}{% set value = 'ttft_' ~ percentile %}
+                {{ query_option('measures', value, percentile | upper, value in spec.measures, 'Time to first token ' ~ (percentile | upper) ~ ', milliseconds') }}
+              {% endfor %}
+            </div>
+          </fieldset>
+          {% for heading, choices in [
+            ('Tokens', [('tokens_in', 'Input'), ('tokens_out', 'Output'), ('cached_in', 'Cached input')]),
+            ('Usage & cost', [('requests', 'Requests'), ('errors', 'Errors'), ('cu', 'Compute units'), ('out_per_cu', 'Output / CU')])
+          ] %}
+          <fieldset class="cb-query-section"><legend>{{ heading }}</legend><div class="cb-query-options">
+            {% for value, text in choices if value in measures %}{{ query_option('measures', value, text, value in spec.measures) }}{% endfor %}
+          </div></fieldset>
+          {% endfor %}
+        </section></section>
+        <section class="card cb-query-filters"><header>{{ card_title('Filters', 'filter') }}<p>Limit the requests included.</p></header><section class="cb-filter-grid">
+          {% for heading, choices in [
+            ('Model & hardware', [('gpu', 'GPU'), ('model', 'Model'), ('engine', 'Engine'), ('kv', 'KV cache')]),
+            ('Request details', [('session', 'Session'), ('client', 'Client'), ('path', 'API path')])
+          ] %}
+          {% set rows = [] %}
+          {% for key, text in choices %}
+            {% set values = options.get(key, []) | list %}
+            {% for value in spec.filters.get(key, []) if value not in values %}{% set _ = values.append(value) %}{% endfor %}
+            {% if values %}{% set _ = rows.append((key, text, values)) %}{% endif %}
+          {% endfor %}
+          {% if rows %}
+          <fieldset class="cb-query-section"><legend>{{ heading }}</legend><div class="cb-filter-list">
+            {% for key, text, values in rows %}{% set selected = spec.filters.get(key, []) %}
+            <details class="cb-filter" data-active="{{ 'true' if selected else 'false' }}">
+              <summary><span>{{ text }}</span><span class="cb-filter-status">
+                <span class="cb-filter-count" data-filter-count aria-live="polite">{{ (selected | length) ~ ' selected' if selected else 'All' }}</span>
+                <svg class="cb-filter-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              </span></summary>
+              <div class="cb-filter-options">{% for value in values %}{{ query_option('f_' ~ key, value, value, value in selected) }}{% endfor %}</div>
+            </details>
+            {% endfor %}
+          </div></fieldset>
+          {% endif %}
+          {% endfor %}
+          <div class="cb-filter-settings">
+            {{ query_option('exclude_playground', 'on', 'Exclude playground', spec.filters.get('exclude_playground', True)) }}
+            <div class="cb-filter-controls">
+              <div class="field"><label class="label" for="metrics-status">Response status</label><select class="select" id="metrics-status" name="status_class">
+                {% for value, text in [('all', 'All responses'), ('2xx', 'Successful (2xx)'), ('4xx', 'Client errors (4xx)'), ('5xx', 'Server errors (5xx)')] %}<option value="{{ value }}" {% if spec.filters.get('status_class', 'all') == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+              </select></div>
+              <div class="field"><label class="label" for="metrics-chart">Chart type</label><select class="select" id="metrics-chart" name="chart">
+                {% for chart in charts %}<option value="{{ chart }}" {% if spec.chart == chart %}selected{% endif %}>{{ {'bar': 'Bar chart', 'line': 'Line chart', 'table': 'Table only'}[chart] }}</option>{% endfor %}
+              </select></div>
+            </div>
+          </div>
+        </section></section>
+      </div>
+    </form>
+    <section class="card cb-results"><header>{{ card_title('Results', 'table') }}<p>Chart of the first measure, then every row.</p></header><section id="metrics-result"><p class="cb-muted">Running…</p></section></section>
+  </div>
+  <div role="tabpanel" id="panel-sql" aria-labelledby="tab-sql" hidden>
+    <section class="card">
+      <header>{{ card_title('SQL', 'database') }}<p>One SELECT on a read-only connection (5 s limit, 10,000 rows). Views: <code>request_stats</code>, <code>run_cu</code>; aggregates <code>median()</code>, <code>p90()</code>, <code>percentile(x, p)</code>.</p></header>
+      <section>
+        <form hx-post="/ui/metrics/sql" hx-target="#sql-result" hx-swap="innerHTML">
+          <textarea class="textarea cb-mono" name="sql" rows="6">SELECT gpu, model, kv, COUNT(*) AS n, ROUND(median(gen_tps), 1) AS gen_p50, ROUND(median(ttft_ms)) AS ttft_ms
+FROM request_stats WHERE is_playground = 0 AND status < 400
+GROUP BY gpu, model, kv ORDER BY gen_p50 DESC</textarea>
+          <div class="cb-row cb-form-footer"><button class="btn" type="submit">{{ icon('play') }}Run</button></div>
+        </form>
+        <div id="sql-result" class="cb-form-footer"></div>
+      </section>
+    </section>
+  </div>
+</div>
+{% endblock %}

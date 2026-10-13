@@ -1,0 +1,65 @@
+{% from "macros.html" import icon, card_title, meter %}
+{% set session = detail.s %}{% set guards = detail.guards %}{% set run = session.run or {} %}
+{% set creation = detail.creation | default({'exit_code': session.new_exit, 'error': 'Creation failed. Open Logs to view the retained lifecycle error.'}) %}
+{% if session.state == 'failed' %}
+<section class="card" data-cb-key="creation-failure">
+  <header>{{ card_title('Session creation failed', 'alert-circle') }}<p>{% if creation.exit_code is not none %}colab new exited with code {{ creation.exit_code }}.{% endif %} See the creation log for details.</p></header>
+  <section class="cb-stack"><pre class="cb-log">{{ creation.error }}</pre>
+    <div class="cb-row"><a class="btn" data-size="sm" data-variant="outline" href="/sessions/{{ session.id }}?tab=logs">{{ icon('terminal') }}View logs</a>
+      <a class="btn" data-size="sm" data-variant="outline" href="/ui/sessions/{{ session.id }}/logs.txt">{{ icon('download') }}Download log</a></div>
+  </section>
+</section>
+{% endif %}
+{% for alert in detail.alerts %}
+<div class="alert" data-cb-key="alert-{{ alert.key }}" data-variant="{{ 'destructive' if alert.level == 'critical' else 'warning' }}">{{ icon('alert') }}<h2>{{ alert.kind | replace('_', ' ') }}</h2>
+  <section><p>{{ alert.message }}</p>
+  {% if alert.actions %}<div class="cb-row">{% for act in alert.actions if act in ('keep', 'abandon', 'gpu-continue', 'retry-setup') %}
+    <button class="btn" data-size="sm" data-variant="outline" hx-post="/ui/actions/sessions/{{ session.id }}/{{ act }}" {% if act in ('gpu-continue', 'retry-setup') %}hx-confirm="Continue setup on this billing VM?" hx-vals='{"confirm":"yes"}'{% endif %} hx-swap="none">{{ {'keep': 'Keep +idle', 'abandon': 'Abandon', 'gpu-continue': 'Continue on this GPU', 'retry-setup': 'Retry setup'}[act] }}</button>{% endfor %}</div>{% endif %}
+  </section></div>
+{% endfor %}
+{% if session.state in ('creating', 'gpu_check', 'setting_up', 'reconfiguring', 'tunnelling') %}
+{% set progress = namespace(current=none) %}
+{% for st in detail.steps if not st.done and progress.current is none %}{% set progress.current = st.label %}{% endfor %}
+<section class="card" data-cb-key="setup"><header>{{ card_title('Setting up', 'rocket') }}<p>{{ session.progress or session.state | replace('_', ' ') }}</p></header>
+  <section><ol class="cb-steps">{% for st in detail.steps %}<li data-done="{{ 'true' if st.done else 'false' }}"{% if st.label == progress.current %} data-current="true" aria-current="step"{% endif %}>{{ st.label }}</li>{% endfor %}</ol></section></section>
+{% endif %}
+<section class="card" data-cb-key="endpoint">
+  <header>{{ card_title('Endpoint', 'plug') }}<p>Any OpenAI-compatible client; any API key works.</p></header>
+  <section class="cb-endpoint">
+    <div class="cb-copy-field"><span class="cb-copy-label">Base URL</span><code id="ep-url">{{ session.endpoint_url }}</code><button class="btn" data-size="sm" data-variant="ghost" aria-label="Copy base URL" onclick="cbCopy('{{ session.endpoint_url }}')">{{ icon('copy') }}Copy</button></div>
+    <div class="cb-copy-field"><span class="cb-copy-label">Model</span><code>{{ run.alias or '-' }}</code><button class="btn" data-size="sm" data-variant="ghost" aria-label="Copy model id" onclick="cbCopy({{ run.alias | tojson | forceescape }})">{{ icon('copy') }}Copy</button></div>
+    <button class="btn" data-size="sm" data-variant="outline" onclick="cbCopy(document.getElementById('pi-json').textContent)">{{ icon('copy') }}pi provider JSON</button>
+    <pre id="pi-json" hidden>{{ detail.pi_json }}</pre>
+  </section>
+</section>
+<div class="cb-grid-2" data-cb-key="hardware-cost">
+  <section class="card"><header>{{ card_title('Hardware & run', 'gpu') }}</header>
+    <section><dl class="cb-kv">
+      <dt>Google account</dt><dd>{{ session.account_email }}</dd>
+      <dt>GPU</dt><dd>{{ session.gpu_name or session.gpu_class or session.gpu_requested }}{% if session.vram_mib %} · {{ (session.vram_mib / 1024) | round(1) }} GiB{% endif %}{% if session.driver %} · driver {{ session.driver }}{% endif %}{% if session.torch_cuda %} · torch CUDA {{ session.torch_cuda }}{% endif %}</dd>
+      <dt>Engine</dt><dd>{{ run.engine or '-' }} {{ run.engine_version or '' }}</dd>
+      <dt>Model</dt><dd class="cb-truncate" title="{{ run.repo }}">{{ run.repo or '-' }} · {{ run.file_or_rev or '' }}</dd>
+      <dt>Settings</dt><dd>ctx {{ run.ctx | num }} · KV {{ run.kv }} · parallel {{ run.parallel }}</dd>
+      {% if run.engine == 'strata' %}<dt>Experimental refusal projection</dt><dd>{{ 'on' if run.refusal_projection else 'off' }}{% if run.refusal_projection %} · reduces refusals and changes behavior; no uncensored guarantee{% endif %}</dd>{% endif %}
+      <dt>VRAM at load</dt><dd>{{ (run.vram_used_mib / 1024) | round(1) if run.vram_used_mib else '-' }} GiB</dd>
+      <dt>Setup</dt><dd>install {{ run.install_s | dur }} · download {{ run.download_s | dur }}{% if run.download_gb %} ({{ run.download_gb | num(1) }} GB){% endif %} · load {{ run.load_s | dur }}</dd>
+    </dl></section></section>
+  <section class="card"><header>{{ card_title('Cost & guards', 'shield') }}</header>
+    <section><dl class="cb-kv">
+      <dt>Rate</dt><dd>{{ session.rate_cu_h | num(2) }} CU/h <span class="cb-muted">({{ session.rate_source }})</span></dd>
+      <dt>Up / cost</dt><dd>{{ session.up_s | dur }} · {{ session.cu | num(3) }} CU</dd>
+      <dt>Idle stop</dt><dd>{% if guards.idle_min %}{{ guards.idle_min }} min{% if guards.idle_left_s is not none %} · in <strong class="{{ 'cb-tone-warning' if guards.idle_left_s <= 300 else '' }}">{{ guards.idle_left_s | dur }}</strong> <button class="btn" data-size="sm" data-variant="outline" hx-post="/ui/actions/sessions/{{ session.id }}/keep" hx-swap="none">Keep</button>{% endif %}{% else %}off{% endif %}</dd>
+      <dt>Deadline</dt><dd>{{ guards.deadline | day if guards.deadline else 'none' }}</dd>
+      <dt>CU cap</dt><dd>{% if guards.cu_cap %}{{ session.cu | num(2) }} / {{ guards.cu_cap | num(2) }}{{ meter(guards.cap_pct, "Compute units spent against this session's cap", (session.cu | num(2)) ~ ' of ' ~ (guards.cu_cap | num(2)) ~ ' compute units spent', max=guards.cu_cap | round(2), now=[guards.cu_cap | round(2), session.cu | round(2)] | min) }}{% else %}none{% endif %}</dd>
+      <dt>Keep-alive</dt><dd>last ok {{ guards.last_exec_ok | ago }}</dd>
+      {% if session.stop_reason %}<dt>Stopped</dt><dd>{{ session.stop_reason }}{% if session.stopped_at %} at {{ session.stopped_at | day }}{% endif %}</dd>{% endif %}
+    </dl></section></section>
+</div>
+<section class="card" data-cb-key="speed"><header>{{ card_title('Speed', 'gauge') }}<p>Engine-reported medians per run and prompt length (playground excluded).</p></header>
+  <section>{% if detail.speed %}
+  <div class="table-container"><table class="table">
+  <caption class="cb-visually-hidden">Measured speed per run and prompt length</caption>
+    <thead><tr><th>Run</th><th>Model · KV</th><th>Prompt</th><th class="cb-num">Req</th><th class="cb-num">Gen t/s</th><th class="cb-num">Prefill t/s</th><th class="cb-num">TTFT</th></tr></thead>
+    <tbody>{% for row in detail.speed %}<tr data-cb-key="speed-{{ row.run_id }}-{{ row.prompt_bucket }}"><td>#{{ row.run_id }}</td><td>{{ row.model }} · {{ row.kv }}</td><td>{{ row.prompt_bucket or '-' }}</td><td class="cb-num">{{ row.n }}</td><td class="cb-num">{{ row.gen | num(1) }}</td><td class="cb-num">{{ row.pre | num(0) }}</td><td class="cb-num">{{ (row.ttft / 1000) | num(2) if row.ttft is not none else '-' }} s</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="cb-muted">No requests yet. Send one from the Playground or any OpenAI-compatible client.</p>{% endif %}</section></section>

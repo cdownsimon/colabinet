@@ -1,0 +1,50 @@
+{
+  "id": "cmpl-f8f9f08ab6924aa3b86477aac9a446e1",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "eos_reason": "stop_token",
+      "stop_str": "<|im_end|>",
+      "message": {
+        "role": "assistant",
+        "content": "```json\n[\n  {\"color\": \"yellow\", \"shape\": \"triangle\"},\n  {\"color\": \"purple\", \"shape\": \"circle\"}\n]\n```",
+        "reasoning_content": null,
+        "tool_calls": null,
+        "tool_call_id": null
+      },
+      "logprobs": null
+    }
+  ],
+  "created": 1790960471,
+  "model": "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw",
+  "object": "chat.completion",
+  "usage": {
+    "prompt_tokens": 333,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "prompt_time": 0.89,
+    "prompt_tokens_per_sec": 374.16,
+    "completion_tokens": 37,
+    "completion_tokens_details": {
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "completion_time": 2.29,
+    "completion_tokens_per_sec": 16.15,
+    "total_tokens": 370,
+    "total_time": 3.18
+  },
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 333,
+    "prompt_ms": 890.0,
+    "prompt_per_token_ms": 2.6726726726726726,
+    "prompt_per_second": 374.15730337078656,
+    "predicted_n": 37,
+    "predicted_ms": 2290.0,
+    "predicted_per_token_ms": 61.891891891891895,
+    "predicted_per_second": 16.157205240174672
+  }
+}

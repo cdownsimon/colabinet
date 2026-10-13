@@ -1,0 +1,39 @@
+{% from "macros.html" import state_badge, icon, empty, nav_attrs %}
+{% if rows %}
+<div class="cb-table-bar">
+  <span class="cb-muted" aria-live="polite">{{ rows | length }}{% if total != rows | length %} of {{ total }}{% endif %} {{ 'session' if rows | length == 1 else 'sessions' }}{% if query %} matching “{{ query }}”{% endif %}</span>
+</div>
+<div class="table-container">
+<table class="table cb-sessions">
+  <caption class="cb-visually-hidden">{{ {'live': 'Live sessions', 'history': 'Stopped and failed sessions', 'all': 'All sessions'}.get(tab, 'Sessions') }}{% if query %} matching “{{ query }}”{% endif %}</caption>
+  <thead><tr><th>Name</th><th>State</th><th>GPU</th><th>Model</th><th>Port</th><th class="cb-col-optional">Created</th><th class="cb-num">Up</th><th class="cb-num">CU</th><th class="cb-num">Req</th><th class="cb-num">Out tok</th><th class="cb-sticky-actions"><span class="cb-visually-hidden">Actions</span></th></tr></thead>
+  <tbody>
+  {% for session in rows %}
+    <tr data-cb-key="session-{{ session.id }}">
+      <td><a href="/sessions/{{ session.id }}" {{ nav_attrs() }}><strong>{{ session.colab_name }}</strong></a><br><small class="cb-muted">{{ session.account_email }}</small><small class="cb-muted cb-created-compact"><br>{{ session.created_at | day }}</small></td>
+      <td>{{ state_badge(session.state, session.stop_unconfirmed, session.progress) }}{% if session.creation_error %}<br><small class="cb-muted" title="{{ session.creation_error }}">{{ session.creation_error.splitlines()[-1][:80] }}</small>{% endif %}</td>
+      <td>{{ session.gpu_name or session.gpu_class or session.gpu_requested }}</td>
+      <td class="cb-model" title="{{ session.run.repo if session.run else '' }}">{% if session.run %}<span>{{ session.run.alias }}</span><span class="cb-sub">{{ session.run.engine }} · {{ ((session.run.ctx or 0) // 1024) }}K · {{ session.run.kv }}</span>{% else %}<span class="cb-muted">—</span>{% endif %}</td>
+      <td><span class="cb-port">:{{ session.proxy_port }}</span></td>
+      <td class="cb-col-optional">{{ session.created_at | day }}</td>
+      <td class="cb-num">{{ session.up_s | dur }}</td>
+      <td class="cb-num">{{ session.cu | num(3) }}</td>
+      <td class="cb-num">{{ session.requests | num }}</td>
+      <td class="cb-num">{{ session.tokens_out | num }}</td>
+      <td class="cb-sticky-actions cb-right">
+        {% if session.state in ('ready', 'engine_down', 'setup_failed') %}<a class="btn" data-cb-key="reconfigure" data-size="sm" data-variant="ghost" href="/sessions/{{ session.id }}?reconfigure=1" {{ nav_attrs() }}>Reconfigure</a>{% endif %}
+        {% if session.state not in ('stopped', 'failed', 'stopping') %}<button class="btn" data-cb-key="stop" data-size="sm" data-variant="destructive" onclick="cbConfirmStop({{ session.id }}, '{{ session.colab_name }}')">{{ icon('stop') }}Stop</button>
+        {% else %}<a class="btn" data-cb-key="open" data-size="sm" data-variant="ghost" href="/sessions/{{ session.id }}" {{ nav_attrs() }}>{{ 'View error' if session.state == 'failed' else 'Open' }}</a>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% elif total == 0 %}
+{% if tab == 'live' %}{% call empty("No live sessions", "Nothing is billing through colabinet.", "sessions") %}<a class="btn" data-size="sm" href="/new" {{ nav_attrs() }}>{{ icon('plus') }}New session</a>{% endcall %}
+{% elif tab == 'history' %}{{ empty("No stopped sessions yet", "Sessions land here once they are stopped and Colab has confirmed the stop.", "inbox") }}
+{% else %}{% call empty("No sessions yet", "Create one on the New session page; nothing is billed until you confirm.", "sessions") %}<a class="btn" data-size="sm" href="/new" {{ nav_attrs() }}>{{ icon('plus') }}New session</a>{% endcall %}{% endif %}
+{% else %}
+{{ empty("No sessions match “" ~ query ~ "”", "This filter hid the " ~ ('session' if total == 1 else 'sessions') ~ " that did not match. Clear it to see all " ~ total ~ " again.", "search") }}
+{% endif %}

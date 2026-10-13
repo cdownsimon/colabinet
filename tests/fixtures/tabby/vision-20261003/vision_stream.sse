@@ -1,0 +1,6 @@
+data: {"id": "chatcmpl-7f105bac0ed74de38c35ae6b7b670453", "object": "chat.completion.chunk", "created": 1790960472, "choices": [{"index": 0, "delta": {"content": "3"}, "finish_reason": null}], "model": "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw"}
+
+data: {"id": "chatcmpl-7f105bac0ed74de38c35ae6b7b670453", "object": "chat.completion.chunk", "created": 1790960472, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 315, "prompt_tokens_details": {"cached_tokens": 0}, "prompt_time": 1.18, "prompt_tokens_per_sec": 266.95, "completion_tokens": 2, "completion_tokens_details": {"accepted_prediction_tokens": 0, "rejected_prediction_tokens": 0}, "completion_time": 0.12, "completion_tokens_per_sec": 16.17, "total_tokens": 317, "total_time": 1.31}, "model": "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw", "timings": {"cache_n": 0, "prompt_n": 315, "prompt_ms": 1180.0, "prompt_per_token_ms": 3.746031746031746, "prompt_per_second": 266.9491525423729, "predicted_n": 2, "predicted_ms": 120.0, "predicted_per_token_ms": 60.0, "predicted_per_second": 16.666666666666668}}
+
+data: [DONE]
+

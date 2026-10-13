@@ -1,0 +1,31 @@
+{% from "macros.html" import icon, nav_attrs %}
+{% if overview_data.alerts %}
+<section class="cb-attention">
+  <div class="cb-section-head"><h2 class="cb-section-title">Needs attention</h2><span class="cb-count" data-tone="danger">{{ overview_data.alerts | length }}</span></div>
+  {% for alert in overview_data.alerts %}
+  <div class="alert" data-cb-key="alert-{{ alert.key }}" data-variant="{{ 'destructive' if alert.level == 'critical' else 'warning' }}">
+    {{ icon('alert') }}
+    <h2>{{ alert.kind | replace('_', ' ') }}</h2>
+    <section>
+      <p>{{ alert.message }}</p>
+      {% if alert.actions %}
+      <div class="cb-row">
+        {% for act in alert.actions %}
+          {% if act in ('stop',) and alert.session_id %}
+          <button class="btn" data-cb-key="{{ act }}" data-size="sm" data-variant="destructive" onclick="cbConfirmStop({{ alert.session_id }}, 'session {{ alert.session_id }}')">Stop</button>
+          {% elif act in ('keep', 'abandon', 'gpu-continue', 'retry-setup') and alert.session_id %}
+          <button class="btn" data-cb-key="{{ act }}" data-size="sm" data-variant="outline" hx-post="/ui/actions/sessions/{{ alert.session_id }}/{{ act }}" {% if act in ('gpu-continue', 'retry-setup') %}hx-confirm="Continue setup on this billing VM?" hx-vals='{"confirm":"yes"}'{% endif %} hx-swap="none">{{ {'keep': 'Keep +idle', 'abandon': 'Abandon', 'gpu-continue': 'Continue', 'retry-setup': 'Retry setup'}[act] }}</button>
+          {% elif act == 'extend-daily-cap' %}
+          <button class="btn" data-cb-key="{{ act }}" data-size="sm" data-variant="outline" hx-post="/ui/actions/daily-cap/extend" hx-swap="none">+5 CU for today</button>
+          {% elif act == 'stop-external' and alert.target %}
+          <button class="btn" data-cb-key="{{ act }}" data-size="sm" data-variant="destructive" hx-post="/ui/actions/external/{{ alert.target }}/stop" hx-vals='{{ {"confirm": "yes", "account_id": overview_data.account_id} | tojson | forceescape }}' hx-confirm="Stop the unmanaged runtime {{ alert.target }}? It is not managed by colabinet." hx-swap="none">Stop {{ alert.target }}</button>
+          {% endif %}
+        {% endfor %}
+        {% if alert.session_id %}<a class="btn" data-size="sm" data-variant="ghost" href="/sessions/{{ alert.session_id }}" {{ nav_attrs() }}>Open</a>{% endif %}
+      </div>
+      {% endif %}
+    </section>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}

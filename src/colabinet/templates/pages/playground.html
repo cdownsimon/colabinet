@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, empty, card_title, nav_attrs %}
+{% block title %}Playground{% endblock %}
+{% block crumbs %}<h1>Playground</h1><span class="cb-page-note">Sent through the session's own proxy port, like any client.</span>{% endblock %}
+{% block content %}
+{% if sessions %}
+<div class="cb-playground">
+  <section class="card">
+    <header>{{ card_title('Request', 'send') }}<p>One message, no history.</p></header>
+    <section class="cb-form-grid cb-pg-grid">
+      <div class="field cb-span-4"><label class="label" for="pg-session">Session</label>
+        <select class="select" id="pg-session">{% for session in sessions %}<option value="{{ session.id }}"
+          data-endpoint="http://127.0.0.1:{{ session.proxy_port }}/v1" data-model="{{ session.run.alias if session.run else '' }}"
+          {% if session.id == selected %}selected{% endif %}>{{ session.colab_name }} · :{{ session.proxy_port }} · {{ session.gpu_class }} · {{ session.run.alias if session.run else '' }}</option>{% endfor %}</select></div>
+      <div class="field"><label class="label" for="pg-thinking">Thinking</label>
+        <select class="select" id="pg-thinking"><option value="none">none</option><option value="low">low</option><option value="medium">medium</option><option value="high">high (xhigh)</option></select></div>
+      <div class="field"><label class="label" for="pg-max">Max tokens</label><input class="input" id="pg-max" type="number" value="256" min="1"></div>
+      <div class="field"><label class="label" for="pg-stream">Stream</label>
+        <div class="cb-switch-row"><label class="cb-switch"><input type="checkbox" role="switch" class="input" id="pg-stream" checked> stream the reply</label></div></div>
+      <div class="field cb-span-4"><label class="label" for="pg-prompt">Prompt</label><textarea class="textarea" id="pg-prompt" rows="6">Say hello in five words.</textarea></div>
+    </section>
+    <footer>
+      <div class="cb-send-row">
+        <button class="btn" id="pg-send" onclick="cbPlaygroundSend()">{{ icon('send') }}Send</button>
+        <span class="cb-send-hint"><kbd class="kbd">⌘</kbd> <kbd class="kbd">↵</kbd> to send</span>
+      </div>
+      <button class="btn" data-size="sm" data-variant="ghost" onclick="cbPlaygroundModels()">{{ icon('code') }}GET /v1/models</button>
+      <label class="cb-switch cb-muted cb-right"><input type="checkbox" class="input" id="pg-raw"> show raw request / response</label>
+    </footer>
+  </section>
+  <section class="card">
+    <header>{{ card_title('Reply', 'bot') }}<p>Streams in as the model answers.</p></header>
+    <section class="cb-reply">
+      <details id="pg-reasoning-box" hidden><summary class="cb-muted">Thinking</summary><pre class="cb-log" id="pg-reasoning"></pre></details>
+      <div id="pg-hint" class="cb-reply-empty">{{ icon('playground') }}<span>Send a prompt to see the reply here.</span></div>
+      <div id="pg-output" class="cb-output"></div>
+      <div id="pg-metrics" class="cb-row cb-metrics"></div>
+      <pre id="pg-raw-out" class="cb-log" hidden></pre>
+    </section>
+  </section>
+</div>
+<section class="card" id="pg-client-examples">
+  <header>{{ card_title('Use outside the Playground', 'terminal') }}
+    <p>Copy an example using the selected session, prompt, thinking level and token limit. The reply arrives in one response, without streaming.
+      Run it on the machine running colabinet; no API key or extra Python packages are required.</p>
+  </header>
+  <section>
+    <p id="pg-examples-error" class="cb-muted" role="status" hidden>Choose a session with a model and a positive whole number for Max tokens.</p>
+    <div class="cb-row cb-example-controls">
+      <div class="field cb-example-language">
+        <label class="label" for="pg-example-language">Language</label>
+        <select class="select" id="pg-example-language" aria-controls="pg-python-panel pg-curl-panel">
+          <option value="python">Python 3</option><option value="curl">curl</option>
+        </select>
+      </div>
+      <button type="button" class="btn cb-right" data-variant="outline" id="pg-copy-example" aria-label="Copy Python example" disabled onclick="cbCopy(document.querySelector('#pg-client-examples pre:not([hidden]) code').textContent, this.getAttribute('aria-label').replace('Copy ', 'Copied '))">{{ icon('copy') }}Copy</button>
+    </div>
+    <pre class="cb-log" id="pg-python-panel" role="region" tabindex="0" aria-label="Python example" hidden><code id="pg-python-example"></code></pre>
+    <pre class="cb-log" id="pg-curl-panel" role="region" tabindex="0" aria-label="curl example" hidden><code id="pg-curl-example"></code></pre>
+  </section>
+</section>
+{% else %}
+<section class="card">
+  {% call empty("No session is ready", "Create a session and wait until it is ready, then test it here.", "playground") %}<div class="cb-row"><a class="btn" data-size="sm" href="/new" {{ nav_attrs() }}>{{ icon('plus') }}New session</a><a class="btn" data-size="sm" data-variant="outline" href="/sessions" {{ nav_attrs() }}>View sessions</a></div>{% endcall %}
+</section>
+{% endif %}
+{% endblock %}

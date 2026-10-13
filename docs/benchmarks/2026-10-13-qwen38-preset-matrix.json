@@ -1,0 +1,2127 @@
+{
+ "date": "2026-10-13",
+ "engines": {
+  "llamacpp": "b11273",
+  "exllamav3": "1.5.2 + TabbyAPI be74bf0a00bcb3a518e6feb7606f150c189be637",
+  "strata": "d6708a4aae15b4860000d54c8af9e84d684bce09"
+ },
+ "hardware": {
+  "A100": {
+   "gpu": "NVIDIA A100-SXM4-40GB",
+   "vram_mib": 40960,
+   "ram_gb": 89.6,
+   "driver": "580.82.07"
+  },
+  "A100-80": {
+   "gpu": "NVIDIA A100-SXM4-80GB",
+   "vram_mib": 81920,
+   "ram_gb": 179.4,
+   "driver": "580.82.07"
+  },
+  "CPU": {
+   "gpu": null,
+   "vram_mib": null,
+   "ram_gb": 13.6,
+   "driver": null
+  },
+  "G4": {
+   "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+   "vram_mib": 97887,
+   "ram_gb": 189.9,
+   "driver": "580.82.07"
+  },
+  "L4": {
+   "gpu": "NVIDIA L4",
+   "vram_mib": 23034,
+   "ram_gb": 56.9,
+   "driver": "580.82.07"
+  },
+  "T4": {
+   "gpu": "Tesla T4",
+   "vram_mib": 15360,
+   "ram_gb": 13.6,
+   "driver": "580.82.07"
+  },
+  "T4-HIGHMEM": {
+   "gpu": "Tesla T4",
+   "vram_mib": 15360,
+   "ram_gb": 54.8,
+   "driver": "580.82.07"
+  }
+ },
+ "method": {
+  "requests": [
+   "26-token text prompt, 160 tokens out (CPU: 4)",
+   "4,223-token text prompt, 32 tokens out",
+   "image + 'What colour is this image? One word.' (8 tokens out)"
+  ],
+  "settings": "each preset's per-GPU context and KV defaults; streaming, temperature 0, thinking disabled",
+  "gen_tps": "engine-reported generation speed",
+  "prefill_tps": "engine-reported prompt processing speed",
+  "ttft_ms": "time to first token at colabinet's metering proxy",
+  "passes": "one cold pass per model on a freshly loaded engine; no warm-up excluded",
+  "rerun_without_prefetch": [
+   "L4:qwen38-27b-abl-q4k",
+   "L4:qwen38-flash-next-strata-iq2-xs"
+  ],
+  "warmed_reruns": "warmed_rerun results followed an unmeasured short and 4,223-token warm-up on a fresh VM. Their measured 4K request reused the warm-up's cached prompt (4,219 tokens), so its prefill is not a prompt-processing figure; the uncached warm-up request measured 1,219 (A100), 1,230 (A100-80) and 200 (T4-HIGHMEM) tok/s prefill."
+ },
+ "costs_cu": {
+  "T4": [
+   {
+    "cu": 1.127,
+    "minutes": 63
+   }
+  ],
+  "L4": [
+   {
+    "cu": 1.567,
+    "minutes": 61
+   },
+   {
+    "cu": 1.918,
+    "minutes": 75
+   }
+  ],
+  "A100-80": [
+   {
+    "cu": 8.342,
+    "minutes": 74
+   },
+   {
+    "cu": 0.8,
+    "minutes": 7
+   }
+  ],
+  "G4": [
+   {
+    "cu": 11.615,
+    "minutes": 78
+   }
+  ],
+  "T4-HIGHMEM": [
+   {
+    "cu": 2.289,
+    "minutes": 108
+   },
+   {
+    "cu": 0.601,
+    "minutes": 28
+   },
+   {
+    "cu": 0.185,
+    "minutes": 9
+   }
+  ],
+  "A100": [
+   {
+    "cu": 7.409,
+    "minutes": 84
+   },
+   {
+    "cu": 0.597,
+    "minutes": 7
+   }
+  ],
+  "CPU": [
+   {
+    "cu": 0.17,
+    "minutes": 127
+   }
+  ]
+ },
+ "results": [
+  {
+   "gpu": "CPU",
+   "step": "qwen38-27b-abl-exl3-4bpw",
+   "preset": "qwen38-27b-abl-exl3-4bpw",
+   "outcome": "refused",
+   "error": "ExLlamaV3 requires a GPU runtime",
+   "ctx": null,
+   "kv": null,
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "CPU",
+   "step": "qwen38-27b-abl-q4k",
+   "preset": "qwen38-27b-abl-q4k",
+   "outcome": "failed",
+   "error": "llama-server exited with -9",
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "CPU",
+   "step": "qwen38-27b-exl3-4bpw",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "refused",
+   "error": "ExLlamaV3 requires a GPU runtime",
+   "ctx": null,
+   "kv": null,
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "CPU",
+   "step": "qwen38-27b-q4km",
+   "preset": "qwen38-27b-q4km",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 4,
+     "gen_tps": 0.02,
+     "prefill_tps": 0.07,
+     "ttft_ms": 101063.44,
+     "total_ms": 265034.03
+    }
+   ],
+   "image_answer_correct": null,
+   "bounded_cpu_test": true,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "CPU",
+   "step": "qwen38-flash-next-abl-q4k-xl",
+   "preset": "qwen38-flash-next-abl-q4k-xl",
+   "outcome": "failed",
+   "error": "llama-server exited with -9",
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "CPU",
+   "step": "qwen38-flash-next-strata-iq2-xs",
+   "preset": "qwen38-flash-next-strata-iq2-xs",
+   "outcome": "refused",
+   "error": "Strata requires a GPU runtime",
+   "ctx": null,
+   "kv": null,
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "CPU",
+   "step": "qwen38-flash-next-strata-iq3-s",
+   "preset": "qwen38-flash-next-strata-iq3-s",
+   "outcome": "refused",
+   "error": "Strata requires a GPU runtime",
+   "ctx": null,
+   "kv": null,
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "CPU",
+   "step": "qwen38-flash-next-strata-iq3-xxs",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "refused",
+   "error": "Strata requires a GPU runtime",
+   "ctx": null,
+   "kv": null,
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "exl3 kv=Q8",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "failed",
+   "error": "TabbyAPI exited with 1",
+   "ctx": 32768,
+   "kv": "Q8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-27b-abl-exl3-4bpw",
+   "preset": "qwen38-27b-abl-exl3-4bpw",
+   "outcome": "failed",
+   "error": "TabbyAPI exited with 1",
+   "ctx": 32768,
+   "kv": "FP16",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-27b-abl-q4k",
+   "preset": "qwen38-27b-abl-q4k",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": 13515,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 1.04,
+     "prefill_tps": 0.7,
+     "ttft_ms": 37644.19,
+     "total_ms": 191637.76
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 1.08,
+     "prefill_tps": 140.17,
+     "ttft_ms": 30986.94,
+     "total_ms": 58898.41
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 2.44,
+     "prefill_tps": 1.1,
+     "ttft_ms": 30751.58,
+     "total_ms": 31586.34
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-27b-exl3-4bpw",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "failed",
+   "error": "TabbyAPI exited with 1",
+   "ctx": 32768,
+   "kv": "FP16",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-27b-q4km",
+   "preset": "qwen38-27b-q4km",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": 13571,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 1.23,
+     "prefill_tps": 0.2,
+     "ttft_ms": 131128.76,
+     "total_ms": 260724.7
+    }
+   ],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-flash-next-abl-q4k-xl",
+   "preset": "qwen38-flash-next-abl-q4k-xl",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": 13681,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 0.24,
+     "prefill_tps": 0.25,
+     "ttft_ms": 104480.73,
+     "total_ms": 775972.23
+    }
+   ],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-flash-next-strata-iq2-xs",
+   "preset": "qwen38-flash-next-strata-iq2-xs",
+   "outcome": "failed",
+   "error": "Strata IQ2_XS cannot fit 12.7 GiB host RAM and 15.0 GiB VRAM under upstream's low-RAM policy",
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-flash-next-strata-iq3-s",
+   "preset": "qwen38-flash-next-strata-iq3-s",
+   "outcome": "failed",
+   "error": "Strata IQ3_S cannot fit 12.7 GiB host RAM and 15.0 GiB VRAM under upstream's low-RAM policy",
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4",
+   "step": "qwen38-flash-next-strata-iq3-xxs",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "failed",
+   "error": "Strata IQ3_XXS cannot fit 12.7 GiB host RAM and 15.0 GiB VRAM under upstream's low-RAM policy",
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-27b-abl-exl3-4bpw",
+   "preset": "qwen38-27b-abl-exl3-4bpw",
+   "outcome": "failed",
+   "error": "TabbyAPI exited with 1",
+   "ctx": 32768,
+   "kv": "FP16",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-27b-abl-q4k",
+   "preset": "qwen38-27b-abl-q4k",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": 13529,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 3.02,
+     "prefill_tps": 3.69,
+     "ttft_ms": 7724.73,
+     "total_ms": 60697.59
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 2.82,
+     "prefill_tps": 167.34,
+     "ttft_ms": 26377.79,
+     "total_ms": 37028.4
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 4.38,
+     "prefill_tps": 4.38,
+     "ttft_ms": 8627.54,
+     "total_ms": 9085.31
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-27b-exl3-4bpw",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "failed",
+   "error": "TabbyAPI exited with 1",
+   "ctx": 32768,
+   "kv": "FP16",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-27b-q4km",
+   "preset": "qwen38-27b-q4km",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": 13571,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 3.92,
+     "prefill_tps": 7.29,
+     "ttft_ms": 4524.89,
+     "total_ms": 45324.68
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 3.83,
+     "prefill_tps": 4.4,
+     "ttft_ms": 1778.3,
+     "total_ms": 8829.82
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 8.53,
+     "prefill_tps": 6.37,
+     "ttft_ms": 5986.28,
+     "total_ms": 6223.97
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": true
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-flash-next-abl-q4k-xl",
+   "preset": "qwen38-flash-next-abl-q4k-xl",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": 13705,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 1.81,
+     "prefill_tps": 0.6,
+     "ttft_ms": 44021.04,
+     "total_ms": 132360.36
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 0.66,
+     "prefill_tps": 8.72,
+     "ttft_ms": 485131.06,
+     "total_ms": 526198.01
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 1.63,
+     "prefill_tps": 0.93,
+     "ttft_ms": 35346.99,
+     "total_ms": 36572.88
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-flash-next-strata-iq2-xs",
+   "preset": "qwen38-flash-next-strata-iq2-xs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 14.4,
+     "prefill_tps": 14.42,
+     "ttft_ms": 2571.66,
+     "total_ms": 13600.99
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 16.41,
+     "prefill_tps": 345.61,
+     "ttft_ms": 13028.26,
+     "total_ms": 14617.96
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 5.27,
+     "prefill_tps": 24.75,
+     "ttft_ms": 2088.52,
+     "total_ms": 2408.38
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-flash-next-strata-iq3-s",
+   "preset": "qwen38-flash-next-strata-iq3-s",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 3,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 2.76,
+     "prefill_tps": 0.83,
+     "ttft_ms": 32046.7,
+     "total_ms": 89666.74
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 2.2,
+     "prefill_tps": 34.72,
+     "ttft_ms": 122346.56,
+     "total_ms": 134412.46
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 0.75,
+     "prefill_tps": 4.09,
+     "ttft_ms": 8435.18,
+     "total_ms": 11022.81
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "T4-HIGHMEM",
+   "step": "qwen38-flash-next-strata-iq3-xxs",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 3.36,
+     "prefill_tps": 1.16,
+     "ttft_ms": 23387.3,
+     "total_ms": 70736.41
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 3.43,
+     "prefill_tps": 56.59,
+     "ttft_ms": 75630.79,
+     "total_ms": 83394.69
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 1.47,
+     "prefill_tps": 6.38,
+     "ttft_ms": 5842.76,
+     "total_ms": 7131.09
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-27b-abl-exl3-4bpw",
+   "preset": "qwen38-27b-abl-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 65536,
+   "kv": "FP16",
+   "vram_used_mib": 17850,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 16.21,
+     "prefill_tps": 185.71,
+     "ttft_ms": 989.97,
+     "total_ms": 10730.78
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 15.96,
+     "prefill_tps": 735.71,
+     "ttft_ms": 6737.99,
+     "total_ms": 8501.87
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 16.67,
+     "prefill_tps": 348.0,
+     "ttft_ms": 3395.84,
+     "total_ms": 3401.0
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-27b-abl-q4k",
+   "preset": "qwen38-27b-abl-q4k",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "q4_0",
+   "vram_used_mib": 21246,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 13.12,
+     "prefill_tps": 69.51,
+     "ttft_ms": 1066.79,
+     "total_ms": 13262.35
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 13.09,
+     "prefill_tps": 660.27,
+     "ttft_ms": 7363.37,
+     "total_ms": 9653.08
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 24.2,
+     "prefill_tps": 47.78,
+     "ttft_ms": 1728.26,
+     "total_ms": 1809.78
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-27b-exl3-4bpw",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 65536,
+   "kv": "FP16",
+   "vram_used_mib": 17850,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 16.29,
+     "prefill_tps": 12.75,
+     "ttft_ms": 2947.28,
+     "total_ms": 12665.67
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 28,
+     "gen_tps": 16.0,
+     "prefill_tps": 524.6,
+     "ttft_ms": 8916.28,
+     "total_ms": 10555.6
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 16.67,
+     "prefill_tps": 334.62,
+     "ttft_ms": 2307.19,
+     "total_ms": 2310.5
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-27b-q4km",
+   "preset": "qwen38-27b-q4km",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "q4_0",
+   "vram_used_mib": 21030,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 14.64,
+     "prefill_tps": 41.79,
+     "ttft_ms": 1313.01,
+     "total_ms": 12245.0
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 14.56,
+     "prefill_tps": 714.69,
+     "ttft_ms": 7056.31,
+     "total_ms": 8909.26
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 26.2,
+     "prefill_tps": 34.86,
+     "ttft_ms": 2064.46,
+     "total_ms": 2136.93
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-flash-next-abl-q4k-xl",
+   "preset": "qwen38-flash-next-abl-q4k-xl",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "f16",
+   "vram_used_mib": 21060,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 2.96,
+     "prefill_tps": 1.16,
+     "ttft_ms": 23134.45,
+     "total_ms": 77204.24
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 0.96,
+     "prefill_tps": 11.24,
+     "ttft_ms": 376590.59,
+     "total_ms": 404750.54
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 2.09,
+     "prefill_tps": 1.24,
+     "ttft_ms": 26944.89,
+     "total_ms": 27901.29
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-flash-next-strata-iq2-xs",
+   "preset": "qwen38-flash-next-strata-iq2-xs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 28.4,
+     "prefill_tps": 29.18,
+     "ttft_ms": 1624.51,
+     "total_ms": 7218.3
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 34.58,
+     "prefill_tps": 1075.18,
+     "ttft_ms": 4714.3,
+     "total_ms": 5464.53
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 12.93,
+     "prefill_tps": 47.11,
+     "ttft_ms": 1458.32,
+     "total_ms": 1578.05
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-flash-next-strata-iq3-s",
+   "preset": "qwen38-flash-next-strata-iq3-s",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 4.31,
+     "prefill_tps": 1.29,
+     "ttft_ms": 21052.95,
+     "total_ms": 58016.52
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 5.22,
+     "prefill_tps": 52.5,
+     "ttft_ms": 81372.17,
+     "total_ms": 86476.9
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 2.42,
+     "prefill_tps": 8.99,
+     "ttft_ms": 4350.23,
+     "total_ms": 5133.64
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-flash-next-strata-iq3-xxs",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "failed",
+   "error": "Strata IQ3_XXS requires about 60 GiB host RAM",
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [],
+   "image_answer_correct": null,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "L4",
+   "step": "qwen38-flash-next-strata-iq3-xxs low-ram=on",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 32768,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 5.61,
+     "prefill_tps": 1.65,
+     "ttft_ms": 16628.95,
+     "total_ms": 44985.82
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 14.88,
+     "prefill_tps": 81.54,
+     "ttft_ms": 52674.4,
+     "total_ms": 54449.61
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 5.7,
+     "prefill_tps": 19.31,
+     "ttft_ms": 2415.9,
+     "total_ms": 2725.12
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-27b-abl-exl3-4bpw",
+   "preset": "qwen38-27b-abl-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "FP16",
+   "vram_used_mib": 30430,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 46.92,
+     "prefill_tps": 260.0,
+     "ttft_ms": 558.1,
+     "total_ms": 3923.41
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 46.88,
+     "prefill_tps": 2639.38,
+     "ttft_ms": 2095.24,
+     "total_ms": 2693.6
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 50.0,
+     "prefill_tps": 580.0,
+     "ttft_ms": 4943.55,
+     "total_ms": 4948.42
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-27b-abl-q4k",
+   "preset": "qwen38-27b-abl-q4k",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "q8_0",
+   "vram_used_mib": 26940,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 42.98,
+     "prefill_tps": 36.8,
+     "ttft_ms": 1068.37,
+     "total_ms": 4794.68
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 39.97,
+     "prefill_tps": 1193.64,
+     "ttft_ms": 4240.54,
+     "total_ms": 4992.31
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 67.17,
+     "prefill_tps": 35.37,
+     "ttft_ms": 1824.0,
+     "total_ms": 1853.39
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-27b-exl3-4bpw",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "FP16",
+   "vram_used_mib": 30432,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 47.48,
+     "prefill_tps": 10.79,
+     "ttft_ms": 2992.17,
+     "total_ms": 6317.81
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 47.37,
+     "prefill_tps": 795.29,
+     "ttft_ms": 5801.98,
+     "total_ms": 6341.01
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 50.0,
+     "prefill_tps": 483.33,
+     "ttft_ms": 2565.81,
+     "total_ms": 2569.2
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-27b-q4km",
+   "preset": "qwen38-27b-q4km",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "q8_0",
+   "vram_used_mib": 26510,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 47.25,
+     "prefill_tps": 120.3,
+     "ttft_ms": 1311.83,
+     "total_ms": 4704.0
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 46.51,
+     "prefill_tps": 20.15,
+     "ttft_ms": 1261.63,
+     "total_ms": 1835.4
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 68.8,
+     "prefill_tps": 3.98,
+     "ttft_ms": 9147.14,
+     "total_ms": 9176.32
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": true
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-flash-next-abl-q4k-xl",
+   "preset": "qwen38-flash-next-abl-q4k-xl",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 8192,
+   "kv": "f16",
+   "vram_used_mib": 39078,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 7.97,
+     "prefill_tps": 1.41,
+     "ttft_ms": 19197.76,
+     "total_ms": 38881.2
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 3.46,
+     "prefill_tps": 90.5,
+     "ttft_ms": 47250.9,
+     "total_ms": 55046.39
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 27.94,
+     "prefill_tps": 4.47,
+     "ttft_ms": 7852.07,
+     "total_ms": 7920.94
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-flash-next-strata-iq2-xs",
+   "preset": "qwen38-flash-next-strata-iq2-xs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 42.2,
+     "prefill_tps": 40.49,
+     "ttft_ms": 1045.94,
+     "total_ms": 4802.19
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 67.64,
+     "prefill_tps": 1624.73,
+     "ttft_ms": 3040.87,
+     "total_ms": 3426.35
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 28.13,
+     "prefill_tps": 76.46,
+     "ttft_ms": 822.92,
+     "total_ms": 882.4
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-flash-next-strata-iq3-s",
+   "preset": "qwen38-flash-next-strata-iq3-s",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 36.68,
+     "prefill_tps": 43.26,
+     "ttft_ms": 1000.89,
+     "total_ms": 5339.44
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 46.89,
+     "prefill_tps": 1602.17,
+     "ttft_ms": 3087.64,
+     "total_ms": 3647.7
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 18.0,
+     "prefill_tps": 62.55,
+     "ttft_ms": 919.21,
+     "total_ms": 1014.03
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100",
+   "step": "qwen38-flash-next-strata-iq3-xxs",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 37.94,
+     "prefill_tps": 47.08,
+     "ttft_ms": 944.03,
+     "total_ms": 5138.79
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 53.09,
+     "prefill_tps": 1786.08,
+     "ttft_ms": 2812.65,
+     "total_ms": 3309.34
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 19.57,
+     "prefill_tps": 71.78,
+     "ttft_ms": 849.7,
+     "total_ms": 939.35
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-27b-abl-exl3-4bpw",
+   "preset": "qwen38-27b-abl-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "FP16",
+   "vram_used_mib": 30430,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 48.93,
+     "prefill_tps": 288.89,
+     "ttft_ms": 812.59,
+     "total_ms": 4037.14
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 49.18,
+     "prefill_tps": 2672.78,
+     "ttft_ms": 2452.46,
+     "total_ms": 3030.23
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 50.0,
+     "prefill_tps": 580.0,
+     "ttft_ms": 5236.47,
+     "total_ms": 5241.46
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-27b-abl-q4k",
+   "preset": "qwen38-27b-abl-q4k",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "f16",
+   "vram_used_mib": 33638,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 45.19,
+     "prefill_tps": 81.83,
+     "ttft_ms": 967.04,
+     "total_ms": 4509.52
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 45.35,
+     "prefill_tps": 1214.23,
+     "ttft_ms": 4556.75,
+     "total_ms": 5223.63
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 64.3,
+     "prefill_tps": 7.16,
+     "ttft_ms": 5751.43,
+     "total_ms": 5789.3
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-27b-exl3-4bpw",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "FP16",
+   "vram_used_mib": 30432,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 46.51,
+     "prefill_tps": 7.65,
+     "ttft_ms": 4262.07,
+     "total_ms": 7632.65
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 47.37,
+     "prefill_tps": 726.85,
+     "ttft_ms": 6710.54,
+     "total_ms": 7246.88
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 50.0,
+     "prefill_tps": 395.45,
+     "ttft_ms": 2553.35,
+     "total_ms": 2556.95
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-27b-q4km",
+   "preset": "qwen38-27b-q4km",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "f16",
+   "vram_used_mib": 33208,
+   "attempts": 2,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 49.42,
+     "prefill_tps": 120.91,
+     "ttft_ms": 1421.14,
+     "total_ms": 4657.8
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 50.14,
+     "prefill_tps": 20.0,
+     "ttft_ms": 1325.88,
+     "total_ms": 1868.63
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 65.73,
+     "prefill_tps": 3.71,
+     "ttft_ms": 9827.28,
+     "total_ms": 9858.36
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": true
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-flash-next-abl-q4k-xl",
+   "preset": "qwen38-flash-next-abl-q4k-xl",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 8192,
+   "kv": "f16",
+   "vram_used_mib": 79120,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 38.65,
+     "prefill_tps": 1.42,
+     "ttft_ms": 18989.19,
+     "total_ms": 23129.23
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 3.91,
+     "prefill_tps": 885.86,
+     "ttft_ms": 5763.57,
+     "total_ms": 12674.81
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 48.46,
+     "prefill_tps": 4.51,
+     "ttft_ms": 8063.85,
+     "total_ms": 8105.22
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-flash-next-strata-iq2-xs",
+   "preset": "qwen38-flash-next-strata-iq2-xs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 66.62,
+     "prefill_tps": 72.95,
+     "ttft_ms": 1027.91,
+     "total_ms": 3414.13
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 88.06,
+     "prefill_tps": 1924.09,
+     "ttft_ms": 3023.54,
+     "total_ms": 3336.88
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 39.06,
+     "prefill_tps": 96.56,
+     "ttft_ms": 1010.79,
+     "total_ms": 1047.27
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-flash-next-strata-iq3-s",
+   "preset": "qwen38-flash-next-strata-iq3-s",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 43.92,
+     "prefill_tps": 50.96,
+     "ttft_ms": 1183.42,
+     "total_ms": 4809.0
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 68.42,
+     "prefill_tps": 1810.12,
+     "ttft_ms": 3169.61,
+     "total_ms": 3551.17
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 28.05,
+     "prefill_tps": 69.7,
+     "ttft_ms": 1150.09,
+     "total_ms": 1207.12
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "A100-80",
+   "step": "qwen38-flash-next-strata-iq3-xxs",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 155,
+     "gen_tps": 41.91,
+     "prefill_tps": 53.93,
+     "ttft_ms": 1155.75,
+     "total_ms": 4834.66
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 62.13,
+     "prefill_tps": 1833.7,
+     "ttft_ms": 3068.57,
+     "total_ms": 3488.06
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 28.33,
+     "prefill_tps": 78.05,
+     "ttft_ms": 1113.0,
+     "total_ms": 1175.43
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-27b-abl-exl3-4bpw",
+   "preset": "qwen38-27b-abl-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "FP16",
+   "vram_used_mib": 30571,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 67.8,
+     "prefill_tps": 650.0,
+     "ttft_ms": 615.55,
+     "total_ms": 2950.95
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 66.67,
+     "prefill_tps": 4854.02,
+     "ttft_ms": 1440.61,
+     "total_ms": 1857.25
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 66.67,
+     "prefill_tps": 1242.86,
+     "ttft_ms": 9137.43,
+     "total_ms": 9138.98
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-27b-abl-q4k",
+   "preset": "qwen38-27b-abl-q4k",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "f16",
+   "vram_used_mib": 33771,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 67.83,
+     "prefill_tps": 316.42,
+     "ttft_ms": 553.89,
+     "total_ms": 2913.15
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 30,
+     "gen_tps": 68.61,
+     "prefill_tps": 3527.39,
+     "ttft_ms": 1785.83,
+     "total_ms": 2223.7
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 119.58,
+     "prefill_tps": 167.81,
+     "ttft_ms": 817.63,
+     "total_ms": 837.67
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-27b-exl3-4bpw",
+   "preset": "qwen38-27b-exl3-4bpw",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "FP16",
+   "vram_used_mib": 30573,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 65.31,
+     "prefill_tps": 24.07,
+     "ttft_ms": 1944.19,
+     "total_ms": 4376.81
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 64.29,
+     "prefill_tps": 2346.11,
+     "ttft_ms": 2366.41,
+     "total_ms": 2756.73
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 87,
+     "completion_tokens": 2,
+     "gen_tps": 66.67,
+     "prefill_tps": 966.67,
+     "ttft_ms": 1456.51,
+     "total_ms": 1460.62
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-27b-q4km",
+   "preset": "qwen38-27b-q4km",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 262144,
+   "kv": "f16",
+   "vram_used_mib": 33357,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 71.16,
+     "prefill_tps": 246.14,
+     "ttft_ms": 582.63,
+     "total_ms": 2832.04
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 71.77,
+     "prefill_tps": 3651.82,
+     "ttft_ms": 1868.25,
+     "total_ms": 2247.1
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 129.02,
+     "prefill_tps": 175.46,
+     "ttft_ms": 812.09,
+     "total_ms": 827.63
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-flash-next-abl-q4k-xl",
+   "preset": "qwen38-flash-next-abl-q4k-xl",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 8192,
+   "kv": "f16",
+   "vram_used_mib": 79271,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 50.81,
+     "prefill_tps": 14.79,
+     "ttft_ms": 2239.25,
+     "total_ms": 5393.54
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 63.28,
+     "prefill_tps": 1366.47,
+     "ttft_ms": 3684.0,
+     "total_ms": 4119.87
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 79.26,
+     "prefill_tps": 97.01,
+     "ttft_ms": 899.88,
+     "total_ms": 925.27
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-flash-next-strata-iq2-xs",
+   "preset": "qwen38-flash-next-strata-iq2-xs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 87.87,
+     "prefill_tps": 108.65,
+     "ttft_ms": 723.64,
+     "total_ms": 2532.09
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 129.43,
+     "prefill_tps": 3746.12,
+     "ttft_ms": 1663.43,
+     "total_ms": 1860.25
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 57.47,
+     "prefill_tps": 174.39,
+     "ttft_ms": 682.54,
+     "total_ms": 707.34
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-flash-next-strata-iq3-s",
+   "preset": "qwen38-flash-next-strata-iq3-s",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 160,
+     "gen_tps": 53.39,
+     "prefill_tps": 188.82,
+     "ttft_ms": 624.58,
+     "total_ms": 3610.21
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 146.18,
+     "prefill_tps": 4018.46,
+     "ttft_ms": 1688.47,
+     "total_ms": 1881.5
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 65.57,
+     "prefill_tps": 219.63,
+     "ttft_ms": 642.38,
+     "total_ms": 662.35
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  },
+  {
+   "gpu": "G4",
+   "step": "qwen38-flash-next-strata-iq3-xxs",
+   "preset": "qwen38-flash-next-strata-iq3-xxs",
+   "outcome": "ok",
+   "error": null,
+   "ctx": 131072,
+   "kv": "int8",
+   "vram_used_mib": null,
+   "attempts": 1,
+   "requests": [
+    {
+     "status": 200,
+     "prompt_tokens": 26,
+     "completion_tokens": 155,
+     "gen_tps": 48.51,
+     "prefill_tps": 74.82,
+     "ttft_ms": 847.63,
+     "total_ms": 4027.67
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 4223,
+     "completion_tokens": 27,
+     "gen_tps": 76.88,
+     "prefill_tps": 3150.08,
+     "ttft_ms": 1902.38,
+     "total_ms": 2248.85
+    },
+    {
+     "status": 200,
+     "prompt_tokens": 32,
+     "completion_tokens": 2,
+     "gen_tps": 34.97,
+     "prefill_tps": 121.3,
+     "ttft_ms": 778.87,
+     "total_ms": 827.1
+    }
+   ],
+   "image_answer_correct": true,
+   "bounded_cpu_test": false,
+   "warmed_rerun": false
+  }
+ ]
+}

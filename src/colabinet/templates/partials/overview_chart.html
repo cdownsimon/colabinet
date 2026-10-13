@@ -1,0 +1,10 @@
+{% from "macros.html" import empty %}
+{% if overview_data.cu_chart.series %}
+{# Each GPU keeps its colour slot whichever classes happen to be in range: colour follows the entity, not its rank. #}
+{% set slots = [] %}{% for gpu in overview_data.cu_chart.series %}{% set _ = slots.append(gpu_classes.index(gpu) if gpu in gpu_classes else loop.index0) %}{% endfor %}
+<div class="chart cb-chart"><canvas data-cb-chart data-chart-type="bar" data-chart-stacked="true" data-chart-legend="true"
+  data-chart-data='{{ overview_data.cu_chart.rows | tojson }}' data-chart-series='{{ overview_data.cu_chart.series | tojson }}'
+  data-chart-slots='{{ slots | tojson }}'></canvas></div>
+{% else %}
+{{ empty("No compute used yet", "Nothing ran in the last 14 days.", "coins") }}
+{% endif %}

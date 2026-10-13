@@ -1,0 +1,11 @@
+{% from "macros.html" import icon %}
+{% if error %}
+<div class="alert" data-variant="destructive">{{ icon('alert') }}<h2>SQL error</h2><section><p>{{ error }}</p></section></div>
+{% else %}
+<p class="cb-muted">{{ res.rows | length }} row{{ '' if res.rows | length == 1 else 's' }}{% if res.note %} · {{ res.note }}{% endif %}</p>
+<div class="table-container"><table class="table">
+  <caption class="cb-visually-hidden">Query result</caption>
+  <thead><tr>{% for custom_model in res.columns %}<th>{{ custom_model }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for row in res.rows %}<tr>{% for config in row %}<td>{{ config if config is not none else '-' }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}

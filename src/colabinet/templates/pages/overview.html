@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, card_title, nav_attrs %}
+{% block title %}Overview{% endblock %}
+{% block crumbs %}<h1>Overview</h1>{% endblock %}
+{% block actions %}<a class="btn" data-size="sm" href="/new" {{ nav_attrs() }}>{{ icon('plus') }}New session</a>{% endblock %}
+{% block content %}
+<div id="ov-kpis" hx-get="/ui/overview/kpis" hx-trigger="every 5s" hx-swap="cb-patch">{% include "partials/overview_kpis.html" %}</div>
+<div id="ov-attention" class="cb-stack" hx-get="/ui/overview/attention" hx-trigger="every 3s" hx-swap="cb-patch">{% include "partials/overview_attention.html" %}</div>
+<section class="card">
+  <header>{{ card_title('Sessions', 'sessions') }}<p>Live first, then the last five that stopped.</p>
+    <div class="card-action"><a class="cb-link" href="/sessions?tab=all" {{ nav_attrs() }}>All sessions{{ icon('arrow-right') }}</a></div></header>
+  <section id="ov-sessions" hx-get="/ui/overview/sessions" hx-trigger="every 3s" hx-swap="cb-patch">{% include "partials/overview_sessions.html" %}</section>
+</section>
+<div class="cb-grid-2">
+  <section class="card">
+    <header>{{ card_title('CU per day', 'coins') }}<p>Last 14 days, by GPU (rate × time, split at local midnight).</p></header>
+    <section id="ov-chart" hx-get="/ui/overview/chart" hx-trigger="every 60s" hx-swap="innerHTML">{% include "partials/overview_chart.html" %}</section>
+  </section>
+  <section class="card">
+    <header>{{ card_title('Activity', 'activity') }}<p>Latest events across all sessions.</p></header>
+    <section id="ov-activity" hx-get="/ui/overview/activity" hx-trigger="every 5s" hx-swap="innerHTML">{% include "partials/overview_activity.html" %}</section>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% from "macros.html" import icon, meter, nav_attrs %}
+{% set key = overview_data.kpis %}
+<div class="cb-kpis">
+  <div class="card cb-kpi"><header><p>{{ icon('sessions') }}Live sessions</p><h2>{{ key.live }}</h2></header><section><a class="cb-kpi-link" data-cb-key="live" href="/sessions?tab=live" {{ nav_attrs() }}><span class="badge" data-tone="{{ 'success' if key.ready else 'neutral' }}">{{ key.ready }} ready</span><span class="cb-muted">View live</span></a></section></div>
+  <div class="card cb-kpi"><header><p>{{ icon('zap') }}Burn rate</p><h2>{{ key.burn_rate | num(2) }} <small>CU/h</small></h2></header><section><span class="cb-muted">right now</span></section></div>
+  <div class="card cb-kpi"><header><p>{{ icon('wallet') }}Balance</p><h2>{{ key.balance | num(1) if key.balance is not none else '—' }} <small>CU</small></h2></header>
+    <section class="cb-kpi-foot">
+      {% if key.hours_left %}<span class="badge" data-tone="{{ 'warning' if key.hours_left < 2 else 'neutral' }}">~{{ key.hours_left | num(0) }} h at this rate</span>{% else %}<span class="cb-muted">idle</span>{% endif %}
+      {% if key.balance is none %}<span class="cb-muted">no reading yet</span>
+      {% elif key.balance_age_s is none %}<span class="cb-muted">age unknown</span>
+      {% else %}<span class="cb-muted{% if key.balance_age_s > 300 %} cb-stale{% endif %}"
+        title="Age of the last successful colab usage reading, not the age of this page">read {{ key.balance_age_s | dur }} ago</span>{% endif %}
+    </section></div>
+  <div class="card cb-kpi"><header><p>{{ icon('calendar') }}CU today</p><h2>{{ key.cu_today | num(2) }} <small>/ {{ key.cap_today | num(0) if key.cap_today else '∞' }}</small></h2></header>
+    <section>{% if key.cap_today %}{{ meter(100 * key.cu_today / key.cap_today, 'Daily CU cap used today', (key.cu_today | num(2)) ~ ' of ' ~ (key.cap_today | num(0)) ~ ' compute units used today', max=key.cap_today, now=[key.cap_today, key.cu_today] | min | round(2)) }}{% endif %}
+      <span class="cb-muted">{% if key.balance_drop is not none %}account: {{ key.balance_drop | num(2) }} CU since midnight{% else %}daily cap{% endif %}</span></section></div>
+  <div class="card cb-kpi"><header><p>{{ icon('trending') }}CU, 30 days</p><h2>{{ key.cu_30d | num(2) }}</h2></header><section><a class="cb-kpi-link" data-cb-key="trend" href="/metrics" {{ nav_attrs() }}><span class="cb-muted">managed sessions · see trend</span></a></section></div>
+  <div class="card cb-kpi"><header><p>{{ icon('activity') }}Requests today</p><h2>{{ key.requests_today | num }}</h2></header><section><a class="cb-kpi-link" data-cb-key="requests" href="/metrics" {{ nav_attrs() }}><span class="cb-muted">{{ key.tokens_out_today | num }} tokens out · {{ key.tokens_in_today | num }} in</span></a></section></div>
+</div>

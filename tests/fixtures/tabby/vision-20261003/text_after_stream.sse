@@ -1,0 +1,8 @@
+data: {"id": "chatcmpl-fe59ff6a2c224206a6fbe16dd6937878", "object": "chat.completion.chunk", "created": 1790960476, "choices": [{"index": 0, "delta": {"content": "1"}, "finish_reason": null}], "model": "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw"}
+
+data: {"id": "chatcmpl-fe59ff6a2c224206a6fbe16dd6937878", "object": "chat.completion.chunk", "created": 1790960476, "choices": [{"index": 0, "delta": {"content": "2"}, "finish_reason": null}], "model": "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw"}
+
+data: {"id": "chatcmpl-fe59ff6a2c224206a6fbe16dd6937878", "object": "chat.completion.chunk", "created": 1790960476, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 30, "prompt_tokens_details": {"cached_tokens": 0}, "prompt_time": 0.11, "prompt_tokens_per_sec": 272.73, "completion_tokens": 3, "completion_tokens_details": {"accepted_prediction_tokens": 0, "rejected_prediction_tokens": 0}, "completion_time": 0.18, "completion_tokens_per_sec": 16.31, "total_tokens": 33, "total_time": 0.3}, "model": "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw", "timings": {"cache_n": 0, "prompt_n": 30, "prompt_ms": 110.0, "prompt_per_token_ms": 3.6666666666666665, "prompt_per_second": 272.72727272727275, "predicted_n": 3, "predicted_ms": 180.0, "predicted_per_token_ms": 60.0, "predicted_per_second": 16.666666666666664}}
+
+data: [DONE]
+

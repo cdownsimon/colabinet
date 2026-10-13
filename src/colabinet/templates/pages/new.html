@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block title %}New session{% endblock %}
+{% block crumbs %}<h1>New session</h1><span class="cb-page-note">Nothing is billed until you confirm.</span>{% endblock %}
+{% block content %}
+{% set custom = preset == 'custom' %}
+{% if preset_error %}<div class="alert" data-variant="destructive">{{ icon('alert') }}<h2>presets.toml has an error</h2><section><p>{{ preset_error }}</p></section></div>{% endif %}
+<form id="new-form" class="form cb-new" data-engine="{{ engine }}" novalidate hx-post="/ui/new/estimate" hx-trigger="load, change, input delay:400ms" hx-target="#estimate" hx-swap="innerHTML">
+  <section class="card">
+    <header><h2 class="cb-card-title" aria-label="Step 1 · GPU"><span class="cb-step-num" aria-hidden="true">1</span>GPU</h2><p>Rate per hour in compute units. Greyed-out classes cannot run the chosen model and settings. The real GPU is checked after create.</p></header>
+    <section>
+      {% set fits = gpu_fit | default({}) %}
+      <fieldset class="cb-gpus" role="radiogroup" aria-label="GPU">
+        {% for gpu_class in gpus %}{% set fit = fits.get(gpu_class) %}
+        <label class="cb-gpu"{% if fit %} data-fit="{{ fit.status }}" title="{{ fit.message }}"{% endif %}>
+          <input type="radio" name="gpu" value="{{ gpu_class }}" {% if gpu_class == gpu %}checked{% endif %}{% if fit and fit.status == 'blocked' and gpu_class != gpu %} disabled{% endif %}>
+          <strong>{{ gpu_class }}</strong><span class="cb-gpu-rate">{{ rates[gpu_class] | num(2) }} CU/h</span><span class="cb-muted">{{ (vram[gpu_class] | num(1)) ~ ' GB VRAM' if vram[gpu_class] else 'No GPU' }}</span>
+          <span class="cb-gpu-fit">{{ fit.label if fit else '' }}</span>
+          <span class="cb-gpu-speed" title="Measured at the preset's defaults">{{ fit.measured.gen ~ ' tok/s measured' if fit and fit.measured else '' }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+      <div id="gpu-note" class="cb-gpu-note" role="status" aria-live="polite" hidden></div>
+    </section>
+  </section>
+  <section class="card">
+    <header><h2 class="cb-card-title" aria-label="Step 2 · Engine &amp; model"><span class="cb-step-num" aria-hidden="true">2</span>Engine &amp; model</h2><p>Pick a preset from presets.toml, or any Hugging Face model.</p></header>
+    <section class="cb-form-grid">
+      <div class="field cb-span-2"><label class="label" for="preset">Model</label>
+        <select class="select" id="preset" name="preset" onchange="cbPresetChanged(this)">
+          {% for model_preset in presets %}<option value="{{ model_preset.id }}" data-engine="{{ model_preset.engine }}" {% if model_preset.id == preset %}selected{% endif %}>{{ model_preset.label }} · {{ model_preset.engine }}</option>{% endfor %}
+          <option value="custom" {% if preset == 'custom' %}selected{% endif %}>Custom Hugging Face model…</option>
+        </select></div>
+      <div class="field cb-custom" {% if not custom %}hidden{% endif %}><label class="label" for="engine">Engine</label>
+        <select class="select" id="engine" name="engine" onchange="cbPresetChanged(document.getElementById('preset'))" {% if not custom %}disabled{% endif %}><option value="llamacpp" {% if engine == 'llamacpp' %}selected{% endif %}>llama.cpp (GGUF)</option><option value="exllamav3" {% if engine == 'exllamav3' %}selected{% endif %}>ExLlamaV3 (EXL3)</option><option value="strata" {% if engine == 'strata' %}selected{% endif %}>Strata (Qwen3.8 Flash Next GGUF)</option></select></div>
+      <div class="field cb-custom" {% if not custom %}hidden{% endif %}><label class="label" for="repo">Repo</label><input class="input" id="repo" name="repo" placeholder="org/model" {% if not custom %}disabled{% endif %}></div>
+      <div class="field cb-custom" data-engine-field="llamacpp strata" {% if not custom or engine not in ('llamacpp', 'strata') %}hidden{% endif %}><label class="label" for="file">GGUF file (first shard for Strata)</label><input class="input" id="file" name="file" placeholder="model-Q4_K_M.gguf" {% if not custom or engine not in ('llamacpp', 'strata') %}disabled{% endif %}></div>
+      <div class="field cb-custom" data-engine-field="exllamav3" {% if not custom or engine != 'exllamav3' %}hidden{% endif %}><label class="label" for="revision">EXL3 revision</label><input class="input" id="revision" name="revision" placeholder="4.00bpw" {% if not custom or engine != 'exllamav3' %}disabled{% endif %}></div>
+      <div class="field cb-custom" {% if not custom %}hidden{% endif %}><label class="label" for="alias">Model id for clients</label><input class="input" id="alias" name="alias" placeholder="my-model" {% if not custom %}disabled{% endif %}></div>
+    </section>
+  </section>
+  <section class="card">
+    <header><h2 class="cb-card-title" aria-label="Step 3 · Settings"><span class="cb-step-num" aria-hidden="true">3</span>Settings</h2><p>Empty fields use the preset's defaults for the chosen GPU.</p></header>
+    <section>
+      <div class="cb-form-section">
+        <h3>Session</h3>
+        <div class="cb-form-grid">
+          <div class="field"><label class="label" for="name">Name</label><input class="input" id="name" name="name" required pattern="[A-Za-z0-9_-]+" placeholder="llm"><p class="cb-muted">Letters, digits, - and _</p></div>
+          <div class="field"><label class="label" for="ctx">Context</label><input class="input" id="ctx" name="ctx" type="number" min="512" step="256"></div>
+          <div class="field"><label class="label" for="parallel">Parallel slots</label><input class="input" id="parallel" name="parallel" type="number" min="1" placeholder="preset default"></div>
+          <div class="field"><label class="label" for="kv">KV cache</label><input class="input" id="kv" name="kv" list="kv-types-{{ engine }}" placeholder="preset default"><datalist id="kv-types-llamacpp"><option>f16</option><option>q8_0</option><option>q4_0</option></datalist><datalist id="kv-types-exllamav3"><option>FP16</option><option>Q8</option><option>Q6</option><option>Q4</option><option>8,8</option></datalist><datalist id="kv-types-strata"><option>int8</option><option>q4_0</option><option>k8v4</option></datalist></div>
+          <div class="field cb-span-4"><label class="label" for="extra_args">Extra engine args</label><input class="input cb-mono" id="extra_args" name="extra_args" placeholder="{{ 'model.chunk_size=4096' if engine == 'exllamav3' else '--ple-io direct' if engine == 'strata' else '--reasoning-budget 4096' }}"></div>
+          <div class="field cb-span-4" id="projection-field" {% if engine != 'strata' %}hidden{% endif %}>
+            <label class="label" for="refusal_projection">Experimental refusal projection (Strata only)</label>
+            <select class="select" id="refusal_projection" name="refusal_projection" {% if engine != 'strata' %}disabled{% endif %}><option value="">Preset default (off for built-in presets)</option><option value="false">Off</option><option value="true">On — experimental</option></select>
+            <p class="cb-muted">Reduces refusals and changes model behavior; it does not guarantee an uncensored model. Strata enables GPU vision and serves one sequence at a time.</p>
+          </div>
+        </div>
+      </div>
+      <div class="cb-form-section">
+        <h3>Cost guards</h3>
+        <div class="cb-form-grid">
+          <div class="field"><label class="label" for="idle_min">Idle stop (min, 0 = off)</label><input class="input" id="idle_min" name="idle_min" type="number" min="0" value="{{ idle_default }}"><p class="cb-muted">Stops after this long without requests</p></div>
+          <div class="field"><label class="label" for="deadline">Deadline (HH:MM)</label><input class="input" id="deadline" name="deadline" type="time"><p class="cb-muted">Stops at this local time</p></div>
+          <div class="field"><label class="label" for="cu_cap">CU cap</label><input class="input" id="cu_cap" name="cu_cap" type="number" min="0" step="0.1"><p class="cb-muted">Stops after spending this much</p></div>
+        </div>
+      </div>
+      <div class="cb-form-section">
+        <h3>Network</h3>
+        <div class="cb-form-grid">
+          <div class="field"><label class="label" for="proxy_port">Proxy port (this Mac)</label><input class="input" id="proxy_port" name="proxy_port" type="number" placeholder="next free from 3080"></div>
+          <div class="field"><label class="label" for="vm_port">Engine port (VM)</label><input class="input" id="vm_port" name="vm_port" type="number" value="8090"></div>
+        </div>
+      </div>
+    </section>
+  </section>
+  <section class="card">
+    <header><h2 class="cb-card-title" aria-label="Step 4 · Review"><span class="cb-step-num" aria-hidden="true">4</span>Review</h2><p>Fit and cost update as you change the fields above.</p></header>
+    <section id="estimate"><p class="cb-muted">Estimating…</p></section>
+  </section>
+  <div class="cb-action-bar">
+    <div class="cb-action-summary"><strong id="create-bar-summary">Check step 4, then confirm to start billing.</strong><span>Nothing is billed until you confirm.</span></div>
+    <button type="button" class="btn" onclick="cbReviewCreate()">{{ icon('rocket') }}Create…</button>
+  </div>
+</form>
+
+<dialog id="create-dialog" class="dialog" aria-labelledby="create-title">
+  <div>
+    <header><span class="cb-dialog-icon" data-tone="info">{{ icon('rocket') }}</span><h2 id="create-title">Create this session?</h2><p id="create-summary">This spends compute units from now until it stops.</p></header>
+    <footer>
+      <button class="btn" data-variant="outline" onclick="this.closest('dialog').close()">Cancel</button>
+      <button class="btn" hx-post="/ui/actions/create" hx-include="#new-form" hx-vals='{"confirm": "yes"}' hx-swap="none" hx-disabled-elt="this" onclick="setTimeout(() => this.closest('dialog').close(), 50)">Create and start billing</button>
+    </footer>
+  </div>
+</dialog>
+{% endblock %}

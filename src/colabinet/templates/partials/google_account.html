@@ -1,0 +1,93 @@
+{% from "macros.html" import icon, card_title %}
+<section id="google-account" class="card" data-auth-state="{{ account.state }}" hx-ext="cb-patch"
+         hx-target="#google-account" hx-swap="cb-patch-outer" hx-sync="#google-account:queue last" hx-history="false"
+         {% if account.busy %}hx-get="/ui/auth" hx-trigger="every 1s"{% endif %}>
+  <header>{{ card_title('Google accounts', 'user') }}<p>Connect your accounts to manage Colab sessions. Signing in does not allocate a runtime.</p></header>
+  <section>
+    <div id="google-account-status" role="status" aria-live="polite">
+      {% if account.state == 'connected' %}
+      <div class="cb-account">
+        <span class="cb-account-avatar" aria-hidden="true">{{ (account.email or '?')[0] | upper }}</span>
+        <div><p><span class="cb-account-email">{{ account.email or 'Google account verified (email unavailable)' }}</span> <span class="badge" data-tone="success">Connected</span></p>
+          <p>Compute-unit balance: {{ account.balance | num(2) }} CU.</p></div>
+      </div>
+      {% elif account.state == 'waiting' %}
+      <ol><li>Open Google sign-in, choose your account, and approve the requested permissions.</li>
+        <li>Copy the authorization code from Google's completion page and paste it below.</li></ol>
+      <p class="cb-muted">Google's completion page may say “Sign in to the gcloud CLI.” Keep this console tab open.</p>
+      {% elif account.state in ('starting', 'checking', 'verifying', 'cancelling') %}
+      <p class="cb-row"><span class="badge cb-state" data-tone="progress">{{ {'starting': 'Preparing Google sign-in…', 'checking': 'Checking your Google account…',
+             'verifying': 'Verifying your Google account…', 'cancelling': 'Cancelling sign-in…'}[account.state] }}</span></p>
+      {% elif account.state == 'cancelled' %}<p>Sign-in cancelled. You can start again.</p>
+      {% elif account.state == 'signed_out' %}<p>Logged out of this console. Sign in or switch to another saved account.</p>
+      {% elif account.error %}<div class="alert" data-variant="warning">{{ icon('alert') }}<h2>Account not connected</h2><section><p>{{ account.error }}</p></section></div>
+      {% else %}<p>Check your connection or sign in to your Google account.</p>{% endif %}
+    </div>
+    {% if account.active_email and account.state != 'connected' %}
+    <p class="cb-muted">Active account: {{ account.active_email }}. Adding another account keeps this connection until sign-in succeeds.</p>
+    {% endif %}
+    {% if account.state == 'waiting' %}
+    <p><a id="google-consent-link" class="btn" href="{{ account.url }}" target="_blank"
+          rel="noopener noreferrer" referrerpolicy="no-referrer">{{ icon('external') }}Open Google sign-in</a></p>
+    <form id="google-code-form" class="form" hx-post="/ui/actions/auth/code" autocomplete="off"
+          hx-on::after-request="this.reset()">
+      <input type="hidden" name="flow_id" value="{{ account.flow_id }}">
+      <div class="field"><label class="label" for="google-authorization-code">Authorization code</label>
+        <input id="google-authorization-code" class="input" type="password" name="code" required maxlength="4096"
+               autocomplete="off" spellcheck="false" autocapitalize="off"></div>
+      <button class="btn" type="submit">Connect account</button>
+    </form>
+    {% endif %}
+    <div class="cb-row cb-form-footer">
+      {% if account.busy %}
+      {% if account.state == 'checking' %}
+      {% if account.mode == 'oauth2' %}<button class="btn" type="button" disabled>Sign in with Google</button>{% endif %}
+      <button class="btn" data-variant="outline" hx-post="/ui/actions/auth/check" disabled>Check account</button>
+      {% endif %}
+      <form hx-post="/ui/actions/auth/cancel"><input type="hidden" name="flow_id" value="{{ account.flow_id }}">
+        <button class="btn" data-variant="outline" type="submit">Cancel</button></form>
+      {% else %}
+      {% if account.mode == 'oauth2' and account.active_email %}
+      <button id="google-add-account" class="btn" hx-post="/ui/actions/auth/start">Add account</button>
+      <form hx-post="/ui/actions/auth/start"><input type="hidden" name="account_id" value="{{ account.active_id }}">
+        <button id="google-account-reconnect" class="btn" data-variant="outline" type="submit">Sign in again</button></form>
+      <form hx-post="/ui/actions/auth/logout"><input type="hidden" name="account_id" value="{{ account.active_id }}">
+        <button id="google-account-logout" class="btn" data-variant="outline" type="submit">Log out</button></form>
+      {% elif account.mode == 'oauth2' %}
+      <button id="google-login-start" class="btn" hx-post="/ui/actions/auth/start">Sign in with Google</button>
+      {% endif %}
+      <button id="google-account-check" class="btn" data-variant="outline" hx-post="/ui/actions/auth/check">Check account</button>
+      {% endif %}
+    </div>
+    {% if account.accounts and account.mode == 'oauth2' %}
+    <div class="table-container cb-form-footer"><table class="table" aria-label="Saved Google accounts">
+      <thead><tr><th>Account</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>{% for saved in account.accounts %}
+        <tr id="google-saved-{{ saved.id }}" data-account-email="{{ saved.email }}">
+          <td>{{ saved.email }}{% if saved.shared %}<br><small class="cb-muted">Shared CLI account</small>{% endif %}</td>
+          <td>{% if saved.active and saved.signed_in %}<span class="badge" data-tone="success">Active</span>{% elif saved.active %}<span class="badge" data-tone="warning">Needs sign-in</span>{% elif saved.signed_in %}<span class="badge" data-tone="neutral">Signed in</span>{% else %}<span class="badge" data-tone="neutral">Logged out</span>{% endif %}</td>
+          <td>{% if saved.active %}<span class="badge" data-tone="info">Current account</span>
+          {% elif saved.signed_in %}<form hx-post="/ui/actions/auth/switch">
+            <input type="hidden" name="account_id" value="{{ saved.id }}">
+            <button class="btn" data-size="sm" data-variant="outline" type="submit" {% if account.busy %}disabled{% endif %}>Switch</button>
+          </form>{% else %}<form hx-post="/ui/actions/auth/start">
+            <input type="hidden" name="account_id" value="{{ saved.id }}">
+            <button class="btn" data-size="sm" data-variant="outline" type="submit"
+                    {% if account.busy %}disabled{% endif %}>Sign in with Google</button></form>{% endif %}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% endif %}
+    <div class="cb-fineprint">
+    {% if account.mode == 'adc' %}
+    <p>This console uses Application Default Credentials. Sign in using
+      <code>gcloud auth application-default login</code> with the scopes in the installation guide, then select Check account.</p>
+    {% else %}
+    <p>Google handles your password and two-step verification. Added accounts use separate private credentials on this Mac.
+      Stop managed sessions and wait for confirmed termination before adding, switching, or logging out.</p>
+    <p>Log out removes the active profile's saved Google credentials. For a shared CLI account it disconnects this console;
+      the CLI's existing credentials remain available outside Colabinet.</p>
+    {% endif %}
+    </div>
+  </section>
+</section>

@@ -1,0 +1,27 @@
+{% from "macros.html" import state_badge, icon, empty, nav_attrs %}
+{% if overview_data.sessions %}
+<div class="table-container">
+<table class="table cb-sessions">
+  <caption class="cb-visually-hidden">Sessions, live first, then recently stopped</caption>
+  <thead><tr><th>Name</th><th>State</th><th>GPU</th><th>Model</th><th>Endpoint</th><th class="cb-num">Up</th><th class="cb-num">CU</th><th class="cb-num">Gen t/s</th><th>Guard</th><th class="cb-sticky-actions"><span class="cb-visually-hidden">Actions</span></th></tr></thead>
+  <tbody>
+  {% for session in overview_data.sessions %}
+    <tr data-cb-key="session-{{ session.id }}">
+      <td><a href="/sessions/{{ session.id }}" {{ nav_attrs() }}><strong>{{ session.colab_name }}</strong></a></td>
+      <td>{{ state_badge(session.state, session.stop_unconfirmed, session.progress) }}{% if session.creation_error %}<br><small class="cb-muted" title="{{ session.creation_error }}">{{ session.creation_error.splitlines()[-1][:80] }}</small>{% endif %}</td>
+      <td>{{ session.gpu_class or session.gpu_requested }}</td>
+      <td class="cb-model" title="{{ session.run.repo if session.run else '' }}">{% if session.run %}<span>{{ session.run.alias }}</span><span class="cb-sub">{{ session.run.engine }}</span>{% else %}<span class="cb-muted">—</span>{% endif %}</td>
+      <td><span class="cb-port">:{{ session.proxy_port }}</span></td>
+      <td class="cb-num">{{ session.up_s | dur }}</td>
+      <td class="cb-num">{{ session.cu | num(3) }}</td>
+      <td class="cb-num">{{ session.gen_tps | num(1) }}</td>
+      <td>{% if session.idle_left_s is not none %}<span class="badge" data-tone="{{ 'warning' if session.idle_left_s <= 300 else 'neutral' }}" title="This session stops itself when idle. Open it to extend.">idle stop in {{ session.idle_left_s | dur }}</span>{% elif session.stop_reason %}<span class="cb-muted">{{ session.stop_reason }}</span>{% else %}<span class="cb-muted">{{ session.progress or '' }}</span>{% endif %}</td>
+      <td class="cb-sticky-actions cb-right">{% if session.state == 'failed' %}<a class="btn" data-size="sm" data-variant="outline" href="/sessions/{{ session.id }}" {{ nav_attrs() }}>View error</a>{% elif session.state not in ('stopped', 'stopping') %}<button class="btn" data-size="sm" data-variant="destructive" onclick="cbConfirmStop({{ session.id }}, '{{ session.colab_name }}')">{{ icon('stop') }}Stop</button>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+{% call empty("No sessions yet", "Create one on the New session page; nothing is billed until you confirm.", "sessions") %}<a class="btn" data-size="sm" href="/new" {{ nav_attrs() }}>{{ icon('plus') }}New session</a>{% endcall %}
+{% endif %}

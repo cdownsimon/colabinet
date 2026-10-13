@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, empty, card_title, nav_attrs %}
+{% macro fit_tone(f, engine) -%}
+{%- if f.variant == 'secondary' -%}success
+{%- elif f.variant == 'destructive' -%}danger
+{%- elif engine != 'strata' and f.verdict in ('tight', 'spills', 'unknown') -%}warning
+{%- else -%}neutral{%- endif -%}
+{%- endmacro %}
+{% block title %}Models{% endblock %}
+{% block crumbs %}<h1>Models</h1><span class="cb-page-note">presets from presets.toml</span>{% endblock %}
+{% block actions %}<button class="btn" data-size="sm" data-variant="outline" hx-post="/ui/actions/presets/reload" hx-swap="none">{{ icon('refresh') }}Reload presets</button>{% endblock %}
+{% block content %}
+{% if models_context.error %}<div class="alert" data-variant="destructive">{{ icon('alert') }}<h2>presets.toml has an error</h2><section><p>{{ models_context.error }}</p></section></div>{% endif %}
+{% for item in models_context.presets %}{% set preset = item.p %}
+<section class="card cb-preset">
+  <header>
+    <div class="cb-preset-head">
+      <span class="cb-card-icon">{{ icon('models') }}</span>
+      <div>
+        <h2>{{ preset.label }}</h2>
+        <div class="cb-preset-tags">
+          <span class="badge" data-tone="info">{{ preset.engine }}</span>
+          {% if preset.weights_gb %}<span class="badge" data-tone="neutral">{{ preset.weights_gb | num(1) }} GB {{ 'download (not VRAM residency)' if preset.engine == 'strata' else 'weights' }}</span>{% endif %}
+          {% if preset.licence %}<span class="badge" data-tone="neutral">{{ preset.licence }}</span>{% endif %}
+        </div>
+        <p><code>{{ preset.repo }}</code>{% if preset.file %} · {{ preset.file }}{% endif %}{% if preset.revision %} @ {{ preset.revision }}{% endif %}</p>
+      </div>
+      <a class="btn" data-size="sm" href="/new?preset={{ preset.id }}" {{ nav_attrs() }}>{{ icon('rocket') }}Launch…</a>
+    </div>
+  </header>
+  <section>
+    <div class="cb-fit-caption"><h3>{{ 'GPU evidence' if preset.engine == 'strata' else 'fit (preset defaults)' }}</h3></div>
+    <div class="cb-fit-grid">
+      {% for f in item.fit %}
+      <div class="cb-fit-cell" title="{{ f.message }}">
+        <strong>{{ f.gpu }}</strong>
+        <span class="badge" data-tone="{{ fit_tone(f, preset.engine) }}">{{ f.label }}</span>
+        {% if not (preset.engine in ('exllamav3', 'strata') and f.gpu == 'CPU') %}<span class="cb-muted">Context: {{ (f.ctx // 1024) }}K<br>KV cache: {{ f.kv }}</span>
+        {% if f.kv_unknown %}<span class="cb-muted">KV memory unknown</span>{% endif %}{% endif %}
+        {% if f.measured %}<span class="cb-fit-speed" title="{{ f.measured.detail }}">Measured <strong>{{ f.measured.gen }}</strong> tok/s{% if f.measured.prefill %}<br>Prefill {{ f.measured.prefill }} tok/s{% endif %}</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if preset.measured %}<p class="cb-footnote">{{ icon('info') }}<span>Measured: engine-reported generation speed on a short prompt and prefill on a 4K-token prompt, from one pass on a real runtime of each class at the preset's defaults{% set dates = preset.measured.values() | map(attribute='date') | select | unique | list %}{% if dates %} ({{ dates | join(', ') }}){% endif %}. Classes without a figure were not measured or could not run it.</span></p>{% endif %}
+    <p class="cb-footnote">{{ icon('info') }}<span>Context is the token limit; KV cache is separate from model weight quantization. {% if preset.engine == 'strata' %}Strata uses a GPU expert cache plus host RAM and a shared 28.8 GB PLE table; download size is not VRAM residency. Badges describe recorded GPU evidence, not estimated residency or a full-context guarantee.{% else %}Fit is advisory{% if preset.engine == 'llamacpp' %}; CPU offload needs sufficient host RAM{% endif %}{% if preset.mmproj or preset.vision %}; vision workspace is not included{% endif %}.{% endif %}</span></p>
+    {% set benchmarks = preset.evidence.items() | selectattr('1.performance') | list %}
+    <dl class="cb-kv cb-perf">
+      <dt>Local requests</dt><dd>{% for bucket in item.measured %}{{ bucket.gpu }}: <strong>{{ bucket.tps | num(1) }} t/s</strong> median ({{ bucket.n }} req, {{ bucket.out | num }} tokens out){% if not loop.last %} · {% endif %}{% else %}<span class="cb-muted">not used yet</span>{% endfor %}</dd>
+      {% for gpu, evidence in benchmarks %}<dt>Saved benchmarks · {{ gpu }}</dt><dd>{{ evidence.performance }}</dd>{% endfor %}
+    </dl>
+    {% if benchmarks %}<p class="cb-footnote">{{ icon('info') }}<span>Saved native decode rates exclude prompt processing and are separate from local requests. Each profile has one measured pass across the listed input lengths; settings and cache state differ. These samples do not establish a projection speedup. Expand Benchmark evidence for sources and setup details.</span></p>{% endif %}
+    {% if preset.evidence %}<details class="cb-details"><summary>Benchmark evidence</summary><dl class="cb-kv">{% for gpu, evidence in preset.evidence.items() %}<dt>{{ gpu }}</dt><dd>{{ evidence.message }}</dd>{% endfor %}</dl></details>{% endif %}
+  </section>
+</section>
+{% else %}
+{% if not models_context.error %}<section class="card">{{ empty("No presets", "Add [[preset]] entries to presets.toml, then Reload presets.", "models") }}</section>{% endif %}
+{% endfor %}
+<section class="card">
+  <header>{{ card_title('Recently used custom models', 'layers') }}<p>Paste a snippet into presets.toml to make it a preset.</p></header>
+  <section>{% for custom_model in models_context.custom %}
+    <details class="cb-custom-model"><summary><strong>{{ custom_model.alias or custom_model.repo }}</strong> <span class="cb-muted">{{ custom_model.engine }} · {{ custom_model.repo }} · {{ custom_model.file_or_rev }} · last {{ custom_model.last | ago }}</span></summary>
+      <pre class="cb-log">{{ custom_model.toml }}</pre></details>
+  {% else %}<p class="cb-muted">None yet. Custom Hugging Face models you launch from New session appear here.</p>{% endfor %}</section>
+</section>
+{% endblock %}

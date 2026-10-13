@@ -1,0 +1,1290 @@
+{
+  "date": "2026-10-03",
+  "gpu": "NVIDIA A100-SXM4-40GB",
+  "vram_total_mib": 40960,
+  "ram_gb": 89.6,
+  "context": 8192,
+  "parallel": 1,
+  "reasoning_effort": "none",
+  "temperature": 0,
+  "seed": 42,
+  "samples_per_kind": 3,
+  "max_output_tokens": 128,
+  "measurement_sessions": [
+    {
+      "name": "a100-run-1",
+      "created_at_utc": "2026-10-02T18:20:22.510448+00:00",
+      "stopped_at_utc": "2026-10-02T18:43:33.138998+00:00",
+      "seconds": 1390.6285498142242,
+      "estimated_cu": 2.0473142538931635,
+      "rate_cu_h": 5.3,
+      "cap_cu": 4.0,
+      "stop_confirmed": true,
+      "gpu_name": "NVIDIA A100-SXM4-40GB",
+      "vram_mib": 40960,
+      "ram_gb": 89.6,
+      "measured_presets": [
+        "qwen38-27b-abl-q4k",
+        "qwen38-27b-abl-exl3-4bpw"
+      ],
+      "subsequent_error": "EXL3-to-Flash switch failed: port 8090 was still busy after stopping engines"
+    },
+    {
+      "name": "a100-run-2",
+      "created_at_utc": "2026-10-02T18:49:17.476171+00:00",
+      "stopped_at_utc": "2026-10-02T19:11:53.549482+00:00",
+      "seconds": 1356.0733108520508,
+      "estimated_cu": 1.9964412631988524,
+      "rate_cu_h": 5.3,
+      "cap_cu": 4.0,
+      "stop_confirmed": true,
+      "gpu_name": "NVIDIA A100-SXM4-40GB",
+      "vram_mib": 40960,
+      "ram_gb": 89.6,
+      "measured_presets": [
+        "qwen38-flash-next-abl-q4k-xl"
+      ],
+      "subsequent_error": null
+    }
+  ],
+  "aborted_attempts": [
+    {
+      "name": "a100-run-3",
+      "created_at_utc": "2026-10-02T17:58:26.007930+00:00",
+      "stopped_at_utc": "2026-10-02T17:59:49.046634+00:00",
+      "seconds": 83.03870391845703,
+      "estimated_cu": 0.12225142521328396,
+      "rate_cu_h": 5.3,
+      "cap_cu": 4.0,
+      "stop_confirmed": true,
+      "gpu_name": "NVIDIA A100-SXM4-40GB",
+      "vram_mib": 40960,
+      "ram_gb": 89.6,
+      "error": "'colab_name'",
+      "inference_ran": false,
+      "vision_checks": []
+    },
+    {
+      "name": "a100-run-4",
+      "created_at_utc": "2026-10-02T18:03:34.235766+00:00",
+      "stopped_at_utc": "2026-10-02T18:18:45.063465+00:00",
+      "seconds": 910.8276989459991,
+      "estimated_cu": 1.3409407790038321,
+      "rate_cu_h": 5.3,
+      "cap_cu": 4.0,
+      "stop_confirmed": true,
+      "gpu_name": "NVIDIA A100-SXM4-40GB",
+      "vram_mib": 40960,
+      "ram_gb": 89.6,
+      "error": "image-b did not match the image: [{'color': 'orange', 'shape': 'triangle'}, {'color': 'purple', 'shape': 'circle'}]",
+      "inference_ran": true,
+      "vision_checks": [
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "image-a",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "red",
+              "shape": "circle"
+            },
+            {
+              "color": "blue",
+              "shape": "square"
+            },
+            {
+              "color": "green",
+              "shape": "triangle"
+            }
+          ]
+        },
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "image-b",
+          "passed": false,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "orange",
+              "shape": "triangle"
+            },
+            {
+              "color": "purple",
+              "shape": "circle"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "models": [
+    {
+      "preset": "qwen38-27b-abl-q4k",
+      "engine": "llamacpp",
+      "engine_version": "b11273",
+      "measurement_session": "a100-run-1",
+      "repo": "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
+      "model_commit": "b146b417080fd3e0e842e9539e69921707360aae",
+      "file_or_revision": "Huihui-Qwen3.8-27B-abliterated-Q4_K.gguf",
+      "kv": "f16",
+      "vision_enabled": true,
+      "model_ids": [
+        "huihui.ai/qwen3.8-27b-abliterated"
+      ],
+      "vision_projector": "mmproj-model-bf16.gguf",
+      "vision_offload": false,
+      "vram_loaded_mib": 17502,
+      "hardware": {
+        "gpu": "NVIDIA A100-SXM4-40GB, 40960, 17502, 580.82.07",
+        "memory": {
+          "MemTotal": "87528512 kB",
+          "MemAvailable": "84479076 kB",
+          "SwapTotal": "0 kB"
+        },
+        "logical_cpus": 12,
+        "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+        "cache_revisions": {
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/mmproj-model-bf16.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00004-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00003-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00002-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-27B-abliterated-GGUF/.cache/huggingface/download/Huihui-Qwen3.8-27B-abliterated-Q4_K.gguf.metadata": "b146b417080fd3e0e842e9539e69921707360aae",
+          "models/huihui-ai%2FHuihui-Qwen3.8-27B-abliterated-GGUF/.cache/huggingface/download/mmproj-model-bf16.gguf.metadata": "b146b417080fd3e0e842e9539e69921707360aae"
+        },
+        "prefetch": {
+          "started_at": 1790965275.684956,
+          "repo": "huihui-ai/Huihui-Qwen3.8-Flash-Next-abliterated-GGUF",
+          "files": [
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf",
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00002-of-00004.gguf",
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00003-of-00004.gguf",
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00004-of-00004.gguf",
+            "mmproj-model-bf16.gguf"
+          ],
+          "destination": "/content/models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF",
+          "returncode": 0,
+          "finished_at": 1790965939.9828427,
+          "seconds": 664.2978866100311,
+          "bytes": 112242197984,
+          "complete": true
+        },
+        "model_lines": []
+      },
+      "setup": {
+        "install_s": 12.4,
+        "download_s": 776.9000000000001,
+        "download_gb": 17.74,
+        "load_s": 96.1
+      },
+      "vision_checks": [
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "image-a",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "red",
+              "shape": "circle"
+            },
+            {
+              "color": "blue",
+              "shape": "square"
+            },
+            {
+              "color": "green",
+              "shape": "triangle"
+            }
+          ]
+        },
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "image-b",
+          "passed": false,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "orange",
+              "shape": "triangle"
+            },
+            {
+              "color": "purple",
+              "shape": "circle"
+            }
+          ]
+        },
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "image-history",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": "blue"
+        },
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "two-images",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": "5"
+        },
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "image-stream-count",
+          "passed": true,
+          "status": 200,
+          "stream": true,
+          "observed": "3"
+        },
+        {
+          "preset": "qwen38-27b-abl-q4k",
+          "label": "text-after-images",
+          "passed": true,
+          "status": 200,
+          "stream": true,
+          "observed": "12"
+        }
+      ],
+      "benchmarks": {
+        "text": {
+          "median": {
+            "gen_tps": 45.93450887397293,
+            "e2e_tps": 35.19095203321855,
+            "ttft_ms": 848.424083997088,
+            "total_ms": 3637.298583998927,
+            "engine_prefill_ms": 183.874
+          },
+          "samples": [
+            {
+              "label": "text-stream-1",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 213.154,
+              "engine_gen_ms": 2774.758,
+              "ttft_ms": 909.3844580020232,
+              "total_ms": 3688.4107910009334,
+              "gen_tps": 46.13014900758913,
+              "e2e_tps": 34.70329289576347,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "text-stream-2",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 183.874,
+              "engine_gen_ms": 2786.576,
+              "ttft_ms": 848.424083997088,
+              "total_ms": 3637.298583998927,
+              "gen_tps": 45.93450887397293,
+              "e2e_tps": 35.19095203321855,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "text-stream-3",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 165.329,
+              "engine_gen_ms": 2789.458,
+              "ttft_ms": 826.8729169976723,
+              "total_ms": 3619.0204999984417,
+              "gen_tps": 45.88705045926484,
+              "e2e_tps": 35.368686085103725,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            }
+          ]
+        },
+        "image": {
+          "median": {
+            "gen_tps": 45.94295034141355,
+            "e2e_tps": 31.938350001842853,
+            "ttft_ms": 1216.8719580004108,
+            "total_ms": 4007.7211249990796,
+            "engine_prefill_ms": 537.092
+          },
+          "samples": [
+            {
+              "label": "image-stream-1",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 538.034,
+              "engine_gen_ms": 2786.064,
+              "ttft_ms": 1214.0002499982074,
+              "total_ms": 4003.4327499997744,
+              "gen_tps": 45.94295034141355,
+              "e2e_tps": 31.972561547338895,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "image-stream-2",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 536.236,
+              "engine_gen_ms": 2787.948,
+              "ttft_ms": 1216.8719580004108,
+              "total_ms": 4007.7211249990796,
+              "gen_tps": 45.911903665348134,
+              "e2e_tps": 31.938350001842853,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "image-stream-3",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 537.092,
+              "engine_gen_ms": 2779.253,
+              "ttft_ms": 1223.5581249988172,
+              "total_ms": 4013.310417001776,
+              "gen_tps": 46.055540823379516,
+              "e2e_tps": 31.89386982321317,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            }
+          ]
+        }
+      },
+      "vision_acceptance": {
+        "passed": 5,
+        "total": 6,
+        "grading": "Exact JSON objects and color names, or exact short answers; mismatches remain recorded."
+      },
+      "acceptance_request_timings": [
+        {
+          "label": "image-a",
+          "prompt_tokens": 333,
+          "cached_tokens": 0,
+          "prefill_tokens": 333,
+          "completion_tokens": 46,
+          "engine_prefill_ms": 5810.653,
+          "engine_gen_ms": 992.369,
+          "ttft_ms": null,
+          "total_ms": 7477.5929159986845,
+          "gen_tps": 46.35372527759331,
+          "e2e_tps": 6.151712257774918,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-b",
+          "prompt_tokens": 333,
+          "cached_tokens": 0,
+          "prefill_tokens": 333,
+          "completion_tokens": 48,
+          "engine_prefill_ms": 523.172,
+          "engine_gen_ms": 1034.001,
+          "ttft_ms": null,
+          "total_ms": 2279.721917002462,
+          "gen_tps": 46.42161854775769,
+          "e2e_tps": 21.05519960220138,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-history",
+          "prompt_tokens": 405,
+          "cached_tokens": 378,
+          "prefill_tokens": 27,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 433.491,
+          "engine_gen_ms": 28.501,
+          "ttft_ms": null,
+          "total_ms": 1239.011040997866,
+          "gen_tps": 70.17297638679344,
+          "e2e_tps": 1.6141906196326177,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "two-images",
+          "prompt_tokens": 607,
+          "cached_tokens": 0,
+          "prefill_tokens": 607,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 836.352,
+          "engine_gen_ms": 28.296,
+          "ttft_ms": null,
+          "total_ms": 1876.9119169992337,
+          "gen_tps": 70.68136839129205,
+          "e2e_tps": 1.0655801062830679,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-stream-count",
+          "prompt_tokens": 317,
+          "cached_tokens": 0,
+          "prefill_tokens": 317,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 512.456,
+          "engine_gen_ms": 28.358,
+          "ttft_ms": 1237.5975830000243,
+          "total_ms": 1266.9438750017434,
+          "gen_tps": 70.52683546089287,
+          "e2e_tps": 1.5786018934716013,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": true
+        },
+        {
+          "label": "text-after-images",
+          "prompt_tokens": 29,
+          "cached_tokens": 0,
+          "prefill_tokens": 29,
+          "completion_tokens": 3,
+          "engine_prefill_ms": 197.369,
+          "engine_gen_ms": 55.609,
+          "ttft_ms": 874.695000002248,
+          "total_ms": 931.4345000020694,
+          "gen_tps": 53.948101925947235,
+          "e2e_tps": 3.220838394963183,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": true
+        }
+      ]
+    },
+    {
+      "preset": "qwen38-27b-abl-exl3-4bpw",
+      "engine": "exllamav3",
+      "engine_version": "1.5.2+be74bf0",
+      "measurement_session": "a100-run-1",
+      "repo": "turboderp/Huihui-Qwen3.8-27B-abliterated-exl3",
+      "model_commit": "718be252b757f8b7bda082d3cca746b8de314fd3",
+      "file_or_revision": "4.00bpw",
+      "kv": "FP16",
+      "vision_enabled": true,
+      "model_ids": [
+        "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw"
+      ],
+      "vision_projector": null,
+      "vision_offload": true,
+      "vram_loaded_mib": 14552,
+      "hardware": {
+        "gpu": "NVIDIA A100-SXM4-40GB, 40960, 14552, 580.82.07",
+        "memory": {
+          "MemTotal": "87528512 kB",
+          "MemAvailable": "80993396 kB",
+          "SwapTotal": "0 kB"
+        },
+        "logical_cpus": 12,
+        "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+        "cache_revisions": {
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/mmproj-model-bf16.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00004-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00003-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00002-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-27B-abliterated-GGUF/.cache/huggingface/download/Huihui-Qwen3.8-27B-abliterated-Q4_K.gguf.metadata": "b146b417080fd3e0e842e9539e69921707360aae",
+          "models/huihui-ai%2FHuihui-Qwen3.8-27B-abliterated-GGUF/.cache/huggingface/download/mmproj-model-bf16.gguf.metadata": "b146b417080fd3e0e842e9539e69921707360aae",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/model-00001-of-00002.safetensors.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/tokenizer_config.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/README.md.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/quantization_config.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/crc32.txt.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/merges.txt.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/video_preprocessor_config.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/model.safetensors.index.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/model-00002-of-00002.safetensors.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/LICENSE.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/preprocessor_config.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/chat_template.jinja.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/tokenizer.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/config.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/generation_config.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/.gitattributes.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3",
+          "tabbyAPI/models/Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw/.cache/huggingface/download/vocab.json.metadata": "718be252b757f8b7bda082d3cca746b8de314fd3"
+        },
+        "prefetch": {
+          "started_at": 1790965275.684956,
+          "repo": "huihui-ai/Huihui-Qwen3.8-Flash-Next-abliterated-GGUF",
+          "files": [
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf",
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00002-of-00004.gguf",
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00003-of-00004.gguf",
+            "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00004-of-00004.gguf",
+            "mmproj-model-bf16.gguf"
+          ],
+          "destination": "/content/models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF",
+          "returncode": 0,
+          "finished_at": 1790965939.9828427,
+          "seconds": 664.2978866100311,
+          "bytes": 112242197984,
+          "complete": true
+        },
+        "model_lines": []
+      },
+      "setup": {
+        "install_s": 39.1,
+        "download_s": 102.0,
+        "download_gb": 16.48,
+        "load_s": 105.1
+      },
+      "vision_checks": [
+        {
+          "preset": "qwen38-27b-abl-exl3-4bpw",
+          "label": "image-a",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "red",
+              "shape": "circle"
+            },
+            {
+              "color": "blue",
+              "shape": "square"
+            },
+            {
+              "color": "green",
+              "shape": "triangle"
+            }
+          ]
+        },
+        {
+          "preset": "qwen38-27b-abl-exl3-4bpw",
+          "label": "image-b",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "yellow",
+              "shape": "triangle"
+            },
+            {
+              "color": "purple",
+              "shape": "circle"
+            }
+          ]
+        },
+        {
+          "preset": "qwen38-27b-abl-exl3-4bpw",
+          "label": "image-history",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": "blue"
+        },
+        {
+          "preset": "qwen38-27b-abl-exl3-4bpw",
+          "label": "two-images",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": "5"
+        },
+        {
+          "preset": "qwen38-27b-abl-exl3-4bpw",
+          "label": "image-stream-count",
+          "passed": true,
+          "status": 200,
+          "stream": true,
+          "observed": "3"
+        },
+        {
+          "preset": "qwen38-27b-abl-exl3-4bpw",
+          "label": "text-after-images",
+          "passed": true,
+          "status": 200,
+          "stream": true,
+          "observed": "12"
+        }
+      ],
+      "benchmarks": {
+        "text": {
+          "median": {
+            "gen_tps": 47.940074906367045,
+            "e2e_tps": 39.03575434936706,
+            "ttft_ms": 657.5992079997377,
+            "total_ms": 3279.045125000266,
+            "engine_prefill_ms": 100.0
+          },
+          "samples": [
+            {
+              "label": "text-stream-1",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 420.0,
+              "engine_gen_ms": 2670.0,
+              "ttft_ms": 1050.044750001689,
+              "total_ms": 3677.6199160012766,
+              "gen_tps": 47.940074906367045,
+              "e2e_tps": 34.805119322710226,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "text-stream-2",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 100.0,
+              "engine_gen_ms": 2670.0,
+              "ttft_ms": 657.5992079997377,
+              "total_ms": 3279.045125000266,
+              "gen_tps": 47.940074906367045,
+              "e2e_tps": 39.03575434936706,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "text-stream-3",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 100.0,
+              "engine_gen_ms": 2670.0,
+              "ttft_ms": 651.1469170000055,
+              "total_ms": 3270.48908299912,
+              "gen_tps": 47.940074906367045,
+              "e2e_tps": 39.137877165032705,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            }
+          ]
+        },
+        "image": {
+          "median": {
+            "gen_tps": 48.1203007518797,
+            "e2e_tps": 35.857208887134966,
+            "ttft_ms": 954.2990410009224,
+            "total_ms": 3569.7145420017478,
+            "engine_prefill_ms": 410.0
+          },
+          "samples": [
+            {
+              "label": "image-stream-1",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 410.0,
+              "engine_gen_ms": 2670.0,
+              "ttft_ms": 953.5428750023129,
+              "total_ms": 3569.7145420017478,
+              "gen_tps": 47.940074906367045,
+              "e2e_tps": 35.857208887134966,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "image-stream-2",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 410.0,
+              "engine_gen_ms": 2640.0,
+              "ttft_ms": 954.2990410009224,
+              "total_ms": 3569.4263330005924,
+              "gen_tps": 48.484848484848484,
+              "e2e_tps": 35.86010413398795,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "image-stream-3",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 410.0,
+              "engine_gen_ms": 2660.0,
+              "ttft_ms": 957.9103329997452,
+              "total_ms": 3573.632125000586,
+              "gen_tps": 48.1203007518797,
+              "e2e_tps": 35.81790053445387,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            }
+          ]
+        }
+      },
+      "vision_acceptance": {
+        "passed": 6,
+        "total": 6,
+        "grading": "Exact JSON objects and color names, or exact short answers; mismatches remain recorded."
+      },
+      "acceptance_request_timings": [
+        {
+          "label": "image-a",
+          "prompt_tokens": 333,
+          "cached_tokens": 0,
+          "prefill_tokens": 333,
+          "completion_tokens": 46,
+          "engine_prefill_ms": 3270.0,
+          "engine_gen_ms": 950.0,
+          "ttft_ms": null,
+          "total_ms": 5858.629207999911,
+          "gen_tps": 48.421052631578945,
+          "e2e_tps": 7.85166604112569,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-b",
+          "prompt_tokens": 333,
+          "cached_tokens": 0,
+          "prefill_tokens": 333,
+          "completion_tokens": 37,
+          "engine_prefill_ms": 380.0,
+          "engine_gen_ms": 760.0,
+          "ttft_ms": null,
+          "total_ms": 1702.0601660005923,
+          "gen_tps": 48.68421052631579,
+          "e2e_tps": 21.738361979847383,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-history",
+          "prompt_tokens": 405,
+          "cached_tokens": 256,
+          "prefill_tokens": 149,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 700.0,
+          "engine_gen_ms": 40.0,
+          "ttft_ms": null,
+          "total_ms": 1275.303582999186,
+          "gen_tps": 50.0,
+          "e2e_tps": 1.5682540429287548,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "two-images",
+          "prompt_tokens": 607,
+          "cached_tokens": 0,
+          "prefill_tokens": 607,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 460.0,
+          "engine_gen_ms": 40.0,
+          "ttft_ms": null,
+          "total_ms": 997.8600410031504,
+          "gen_tps": 50.0,
+          "e2e_tps": 2.004289096484309,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-stream-count",
+          "prompt_tokens": 317,
+          "cached_tokens": 0,
+          "prefill_tokens": 317,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 360.0,
+          "engine_gen_ms": 40.0,
+          "ttft_ms": 915.2082920008979,
+          "total_ms": 923.3031250005297,
+          "gen_tps": 50.0,
+          "e2e_tps": 2.16613585056246,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": true
+        },
+        {
+          "label": "text-after-images",
+          "prompt_tokens": 29,
+          "cached_tokens": 0,
+          "prefill_tokens": 29,
+          "completion_tokens": 3,
+          "engine_prefill_ms": 60.0,
+          "engine_gen_ms": 60.0,
+          "ttft_ms": 616.159790999518,
+          "total_ms": 616.9244999982766,
+          "gen_tps": 50.0,
+          "e2e_tps": 4.862831675526553,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": true
+        }
+      ]
+    },
+    {
+      "preset": "qwen38-flash-next-abl-q4k-xl",
+      "engine": "llamacpp",
+      "engine_version": "b11273",
+      "measurement_session": "a100-run-2",
+      "repo": "huihui-ai/Huihui-Qwen3.8-Flash-Next-abliterated-GGUF",
+      "model_commit": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+      "file_or_revision": "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf",
+      "kv": "f16",
+      "vision_enabled": true,
+      "model_ids": [
+        "huihui.ai/qwen3.8-flash-next-abliterated"
+      ],
+      "vision_projector": "mmproj-model-bf16.gguf",
+      "vision_offload": true,
+      "vram_loaded_mib": 39078,
+      "hardware": {
+        "gpu": "NVIDIA A100-SXM4-40GB, 40960, 39078, 580.82.07",
+        "memory": {
+          "MemTotal": "87528512 kB",
+          "MemAvailable": "83678600 kB",
+          "SwapTotal": "0 kB"
+        },
+        "logical_cpus": 12,
+        "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+        "cache_revisions": {
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/mmproj-model-bf16.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00004-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00003-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+          "models/huihui-ai%2FHuihui-Qwen3.8-Flash-Next-abliterated-GGUF/.cache/huggingface/download/UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00002-of-00004.gguf.metadata": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b"
+        },
+        "prefetch": null,
+        "model_lines": []
+      },
+      "setup": {
+        "install_s": 8.8,
+        "download_s": 543.2,
+        "download_gb": 112.24,
+        "load_s": 357.2
+      },
+      "vision_checks": [
+        {
+          "preset": "qwen38-flash-next-abl-q4k-xl",
+          "label": "image-a",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "red",
+              "shape": "circle"
+            },
+            {
+              "color": "blue",
+              "shape": "square"
+            },
+            {
+              "color": "green",
+              "shape": "triangle"
+            }
+          ]
+        },
+        {
+          "preset": "qwen38-flash-next-abl-q4k-xl",
+          "label": "image-b",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": [
+            {
+              "color": "yellow",
+              "shape": "triangle"
+            },
+            {
+              "color": "purple",
+              "shape": "circle"
+            }
+          ]
+        },
+        {
+          "preset": "qwen38-flash-next-abl-q4k-xl",
+          "label": "image-history",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": "blue"
+        },
+        {
+          "preset": "qwen38-flash-next-abl-q4k-xl",
+          "label": "two-images",
+          "passed": true,
+          "status": 200,
+          "stream": false,
+          "observed": "5"
+        },
+        {
+          "preset": "qwen38-flash-next-abl-q4k-xl",
+          "label": "image-stream-count",
+          "passed": true,
+          "status": 200,
+          "stream": true,
+          "observed": "3"
+        },
+        {
+          "preset": "qwen38-flash-next-abl-q4k-xl",
+          "label": "text-after-images",
+          "passed": true,
+          "status": 200,
+          "stream": true,
+          "observed": "12"
+        }
+      ],
+      "benchmarks": {
+        "text": {
+          "median": {
+            "gen_tps": 19.569896484420987,
+            "e2e_tps": 12.218086447688743,
+            "ttft_ms": 3952.7856250024342,
+            "total_ms": 10476.272249998146,
+            "engine_prefill_ms": 3054.179
+          },
+          "samples": [
+            {
+              "label": "text-stream-1",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 3977.123,
+              "engine_gen_ms": 7543.226,
+              "ttft_ms": 4870.131708998088,
+              "total_ms": 12414.426542000001,
+              "gen_tps": 16.96886716638213,
+              "e2e_tps": 10.310584992947955,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "text-stream-2",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 3031.108,
+              "engine_gen_ms": 6540.658,
+              "ttft_ms": 3885.604750001221,
+              "total_ms": 10476.272249998146,
+              "gen_tps": 19.569896484420987,
+              "e2e_tps": 12.218086447688743,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "text-stream-3",
+              "prompt_tokens": 54,
+              "cached_tokens": 0,
+              "prefill_tokens": 54,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 3054.179,
+              "engine_gen_ms": 6346.836,
+              "ttft_ms": 3952.7856250024342,
+              "total_ms": 10296.2327919995,
+              "gen_tps": 20.1675291436552,
+              "e2e_tps": 12.431731351243346,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            }
+          ]
+        },
+        "image": {
+          "median": {
+            "gen_tps": 18.20554486848983,
+            "e2e_tps": 6.542853974758112,
+            "ttft_ms": 12585.545625002851,
+            "total_ms": 19563.32824999845,
+            "engine_prefill_ms": 11707.516
+          },
+          "samples": [
+            {
+              "label": "image-stream-1",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 12156.151,
+              "engine_gen_ms": 7433.587,
+              "ttft_ms": 13026.065707999805,
+              "total_ms": 20464.008041999477,
+              "gen_tps": 17.219143328785954,
+              "e2e_tps": 6.254884172118098,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "image-stream-2",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 11707.516,
+              "engine_gen_ms": 6748.289,
+              "ttft_ms": 12585.545625002851,
+              "total_ms": 19336.53966700149,
+              "gen_tps": 18.967770941641653,
+              "e2e_tps": 6.619591829992037,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            },
+            {
+              "label": "image-stream-3",
+              "prompt_tokens": 347,
+              "cached_tokens": 0,
+              "prefill_tokens": 347,
+              "completion_tokens": 128,
+              "engine_prefill_ms": 11657.652,
+              "engine_gen_ms": 7030.825,
+              "ttft_ms": 12528.851874998509,
+              "total_ms": 19563.32824999845,
+              "gen_tps": 18.20554486848983,
+              "e2e_tps": 6.542853974758112,
+              "status": 200,
+              "finish_reason": "length",
+              "tokens_source": "engine",
+              "done": true
+            }
+          ]
+        }
+      },
+      "vision_acceptance": {
+        "passed": 6,
+        "total": 6,
+        "grading": "Exact JSON objects and color names, or exact short answers; mismatches remain recorded."
+      },
+      "acceptance_request_timings": [
+        {
+          "label": "image-a",
+          "prompt_tokens": 333,
+          "cached_tokens": 0,
+          "prefill_tokens": 333,
+          "completion_tokens": 46,
+          "engine_prefill_ms": 15322.225,
+          "engine_gen_ms": 2480.96,
+          "ttft_ms": null,
+          "total_ms": 18671.304958999826,
+          "gen_tps": 18.541209854249967,
+          "e2e_tps": 2.4636735408162975,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-b",
+          "prompt_tokens": 333,
+          "cached_tokens": 0,
+          "prefill_tokens": 333,
+          "completion_tokens": 32,
+          "engine_prefill_ms": 12297.135,
+          "engine_gen_ms": 1539.906,
+          "ttft_ms": null,
+          "total_ms": 14744.627583000693,
+          "gen_tps": 20.78048919869135,
+          "e2e_tps": 2.1702820108453125,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-history",
+          "prompt_tokens": 405,
+          "cached_tokens": 378,
+          "prefill_tokens": 27,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 1112.342,
+          "engine_gen_ms": 76.633,
+          "ttft_ms": null,
+          "total_ms": 2146.344583001337,
+          "gen_tps": 26.098417131001007,
+          "e2e_tps": 0.9318168274747868,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "two-images",
+          "prompt_tokens": 607,
+          "cached_tokens": 0,
+          "prefill_tokens": 607,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 20083.687,
+          "engine_gen_ms": 71.757,
+          "ttft_ms": null,
+          "total_ms": 21296.742874998017,
+          "gen_tps": 27.87184525551514,
+          "e2e_tps": 0.09391107418345944,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": false
+        },
+        {
+          "label": "image-stream-count",
+          "prompt_tokens": 317,
+          "cached_tokens": 0,
+          "prefill_tokens": 317,
+          "completion_tokens": 2,
+          "engine_prefill_ms": 10231.418,
+          "engine_gen_ms": 58.58,
+          "ttft_ms": 11142.342667000776,
+          "total_ms": 11200.3611250002,
+          "gen_tps": 34.141345168999656,
+          "e2e_tps": 0.1785656710242871,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": true
+        },
+        {
+          "label": "text-after-images",
+          "prompt_tokens": 29,
+          "cached_tokens": 0,
+          "prefill_tokens": 29,
+          "completion_tokens": 3,
+          "engine_prefill_ms": 847.466,
+          "engine_gen_ms": 146.317,
+          "ttft_ms": 1755.0167499975942,
+          "total_ms": 1902.2840420002467,
+          "gen_tps": 20.50342748962868,
+          "e2e_tps": 1.5770515515892716,
+          "status": 200,
+          "finish_reason": "stop",
+          "tokens_source": "engine",
+          "done": true
+        }
+      ]
+    }
+  ],
+  "console_stats": [
+    {
+      "gpu": "A100",
+      "model": "huihui.ai/qwen3.8-27b-abliterated",
+      "kv": "FP16",
+      "requests": 17,
+      "tokens_in": 3270,
+      "tokens_out": 874,
+      "gen_tps_p50": 48.3,
+      "ttft_ms_p50": 933
+    },
+    {
+      "gpu": "A100",
+      "model": "huihui.ai/qwen3.8-27b-abliterated",
+      "kv": "f16",
+      "requests": 25,
+      "tokens_in": 4141,
+      "tokens_out": 1377,
+      "gen_tps_p50": 46.4,
+      "ttft_ms_p50": 1095
+    },
+    {
+      "gpu": "A100",
+      "model": "huihui.ai/qwen3.8-flash-next-abliterated",
+      "kv": "f16",
+      "requests": 16,
+      "tokens_in": 3270,
+      "tokens_out": 869,
+      "gen_tps_p50": 19.3,
+      "ttft_ms_p50": 8005
+    }
+  ],
+  "models_page_status": 200,
+  "estimated_total_cu": 5.506947721309133,
+  "earlier_text_testing_cu": 3.457577401863204,
+  "estimated_all_testing_cu": 8.964525123172336,
+  "method": {
+    "generation_tps": "output tokens / engine-reported generation seconds",
+    "end_to_end_tps": "output tokens / client wall time",
+    "ttft": "client time to first streamed content token through metering proxy and SSH tunnel",
+    "images": "768x384 PNG fixtures image-a.png and image-b.png under tests/fixtures/tabby/vision-20261003",
+    "image_benchmark": "Image A, three varied requests for detailed description and 100 observations, after acceptance checks already sent this image; warm repeated-image workload, not a cold image-encoding benchmark.",
+    "excluded_from_speed_medians": "warm-up, arithmetic and image acceptance checks",
+    "scope": "single slot, short text or a single image,128 output tokens; no long-context, video or concurrency claim"
+  },
+  "fixtures": [
+    {
+      "path": "tests/fixtures/tabby/vision-20261003/image-a.png",
+      "sha256": "0d45ec4b7dc88f2b683a1c131a34533c81f20f30f8685a1ac12efb75e29cc769",
+      "bytes": 4636
+    },
+    {
+      "path": "tests/fixtures/tabby/vision-20261003/image-b.png",
+      "sha256": "25c9783ff840f72af19d62002b28115c10cbf8ce658c57dae329030a858cc766",
+      "bytes": 3620
+    }
+  ],
+  "notes": [
+    "27B and EXL3 were measured on one A100 40GB. Flash-Next was measured on a fresh A100 40GB after fixing the engine-stop shell bug. Hardware and session provenance are retained per model.",
+    "The prefetched Flash files on the earlier VM were discarded when that runtime stopped; the resumed Flash-only run downloaded its full weights and projector again. All owned durations remain included in CU estimates.",
+    "Image B uses a mustard-yellow triangle. Calling it orange fails the exact color-name check but is not evidence that the image was ignored; raw answers and all mismatches are preserved.",
+    "Default app rollups include other successful requests; the six stream-only medians here use a stricter selection.",
+    "Loaded VRAM is a post-load reading, not an image-encoding peak.",
+    "Account balance deltas are not used as settled cost; CU is rate times runtime duration."
+  ]
+}

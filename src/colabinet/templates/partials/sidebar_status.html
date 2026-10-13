@@ -1,0 +1,11 @@
+{% from "macros.html" import icon, meter, nav_attrs %}
+<dl class="cb-status">
+  <dt>Balance</dt>
+  <dd>{% if base.balance is not none %}<strong>{{ base.balance | num(2) }}</strong> CU <small title="Age of the last colab usage reading">· {{ base.usage_age_s | dur }} old</small>{% else %}—{% endif %}</dd>
+  <dt>Burning</dt>
+  <dd>{{ base.burn_rate | num(2) }} CU/h · {{ base.live_count }} live</dd>
+  <dt>Today</dt>
+  <dd>{{ base.daily.spend | num(2) }} / {{ base.daily.cap | num(0) if base.daily.cap else 'no' }} CU cap</dd>
+  {% if base.daily.cap %}{{ meter(100 * base.daily.spend / base.daily.cap, 'Daily compute unit cap', (base.daily.spend | num(2)) ~ ' of ' ~ (base.daily.cap | num(0)) ~ ' compute units used today', max=base.daily.cap, now=[base.daily.cap, base.daily.spend] | min | round(2)) }}{% endif %}
+  {% if base.alert_count %}<dt class="cb-visually-hidden">Alerts</dt><dd class="cb-status-alerts-row"><a class="cb-status-alerts" href="/" {{ nav_attrs() }}>{{ icon('alert') }}{{ base.alert_count }} need{{ 's' if base.alert_count == 1 else '' }} attention</a></dd>{% endif %}
+</dl>

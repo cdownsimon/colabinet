@@ -1,0 +1,262 @@
+{
+  "date": "2026-10-03",
+  "engine": "llamacpp",
+  "engine_version": "b11273",
+  "hardware": {
+    "gpu": "NVIDIA A100-SXM4-40GB",
+    "vram_mib": 40960,
+    "ram_gb": 89.6,
+    "logical_cpus": 12,
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "driver": "580.82.07",
+    "torch_cuda": "13.0"
+  },
+  "settings": {
+    "context": 8192,
+    "kv": "f16",
+    "parallel": 1,
+    "temperature": 0,
+    "seed": 42,
+    "reasoning_effort": "none",
+    "stream_samples_per_model": 3,
+    "output_tokens_per_stream": 128,
+    "upstream_connection_reuse": false
+  },
+  "method": {
+    "generation_tps": "completion_tokens * 1000 / engine_gen_ms",
+    "end_to_end_tps": "completion_tokens * 1000 / total_ms",
+    "ttft_ms": "client time to first streamed content token through the metering proxy and SSH tunnel",
+    "comparison": "three streamed samples after a nonstreaming warm-up and correctness probe; warm-up excluded"
+  },
+  "successful_session": {
+    "runtime_name": "a100-run-5",
+    "created_at_utc": "2026-10-02T17:01:51.191673+00:00",
+    "stopped_at_utc": "2026-10-02T17:28:25.588750+00:00",
+    "duration_seconds": 1594.3970770835876,
+    "rate_cu_per_hour": 5.3,
+    "estimated_cu": 2.3473068079286152,
+    "cap_cu": 4.0,
+    "stop_confirmed": true,
+    "final_state": "stopped"
+  },
+  "models": [
+    {
+      "preset": "qwen38-27b-abl-q4k",
+      "repo": "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF",
+      "model_commit": "b146b417080fd3e0e842e9539e69921707360aae",
+      "file": "Huihui-Qwen3.8-27B-abliterated-Q4_K.gguf",
+      "vision_projector": "mmproj-model-bf16.gguf",
+      "cpu_offload_required": false,
+      "models_status": 200,
+      "model_ids": [
+        "huihui.ai/qwen3.8-27b-abliterated"
+      ],
+      "arithmetic_correct": true,
+      "vram_used_mib_at_ready": 17502,
+      "setup": {
+        "install_s": 15.5,
+        "download_s": 949.7,
+        "download_gb": 17.74,
+        "load_s": 111.1
+      },
+      "median": {
+        "gen_tps": 46.49522279747952,
+        "e2e_tps": 35.46441815789798,
+        "ttft_ms": 853.5173749987734,
+        "total_ms": 3609.2513750008948,
+        "engine_prefill_ms": 185.236,
+        "engine_gen_ms": 2752.971
+      },
+      "samples": [
+        {
+          "label": "stream-1",
+          "status": 200,
+          "prompt_tokens": 54,
+          "cached_tokens": 0,
+          "prefill_tokens": 54,
+          "completion_tokens": 128,
+          "engine_prefill_ms": 211.526,
+          "engine_gen_ms": 2755.909,
+          "ttft_ms": 913.9390000018466,
+          "total_ms": 3672.461292000662,
+          "gen_tps": 46.44565549878461,
+          "e2e_tps": 34.854009293116036,
+          "finish_reason": "length",
+          "tokens_source": "engine",
+          "content_nonempty": true,
+          "done": true
+        },
+        {
+          "label": "stream-2",
+          "status": 200,
+          "prompt_tokens": 54,
+          "cached_tokens": 0,
+          "prefill_tokens": 54,
+          "completion_tokens": 128,
+          "engine_prefill_ms": 185.236,
+          "engine_gen_ms": 2750.881,
+          "ttft_ms": 853.5173749987734,
+          "total_ms": 3609.2513750008948,
+          "gen_tps": 46.530547849943346,
+          "e2e_tps": 35.46441815789798,
+          "finish_reason": "length",
+          "tokens_source": "engine",
+          "content_nonempty": true,
+          "done": true
+        },
+        {
+          "label": "stream-3",
+          "status": 200,
+          "prompt_tokens": 54,
+          "cached_tokens": 0,
+          "prefill_tokens": 54,
+          "completion_tokens": 128,
+          "engine_prefill_ms": 167.657,
+          "engine_gen_ms": 2752.971,
+          "ttft_ms": 833.6017910005467,
+          "total_ms": 3592.550499997742,
+          "gen_tps": 46.49522279747952,
+          "e2e_tps": 35.629283429719486,
+          "finish_reason": "length",
+          "tokens_source": "engine",
+          "content_nonempty": true,
+          "done": true
+        }
+      ]
+    },
+    {
+      "preset": "qwen38-flash-next-abl-q4k-xl",
+      "repo": "huihui-ai/Huihui-Qwen3.8-Flash-Next-abliterated-GGUF",
+      "model_commit": "73e9eb7c69fdbf667def63e233e70845e7d5ac0b",
+      "file": "UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf",
+      "vision_projector": null,
+      "cpu_offload_required": true,
+      "models_status": 200,
+      "model_ids": [
+        "huihui.ai/qwen3.8-flash-next-abliterated"
+      ],
+      "arithmetic_correct": true,
+      "vram_used_mib_at_ready": 39078,
+      "setup": {
+        "install_s": 0.0,
+        "download_s": 44.6,
+        "download_gb": 111.33,
+        "load_s": 267.1
+      },
+      "median": {
+        "gen_tps": 19.650388878125526,
+        "e2e_tps": 12.569040528129484,
+        "ttft_ms": 3669.234665998374,
+        "total_ms": 10183.752667002409,
+        "engine_prefill_ms": 3058.658,
+        "engine_gen_ms": 6513.866
+      },
+      "samples": [
+        {
+          "label": "stream-1",
+          "status": 200,
+          "prompt_tokens": 54,
+          "cached_tokens": 0,
+          "prefill_tokens": 54,
+          "completion_tokens": 128,
+          "engine_prefill_ms": 3959.881,
+          "engine_gen_ms": 7468.813,
+          "ttft_ms": 4600.152708997484,
+          "total_ms": 12072.394374998112,
+          "gen_tps": 17.137930752851894,
+          "e2e_tps": 10.602702001277192,
+          "finish_reason": "length",
+          "tokens_source": "engine",
+          "content_nonempty": true,
+          "done": true
+        },
+        {
+          "label": "stream-2",
+          "status": 200,
+          "prompt_tokens": 54,
+          "cached_tokens": 0,
+          "prefill_tokens": 54,
+          "completion_tokens": 128,
+          "engine_prefill_ms": 3058.658,
+          "engine_gen_ms": 6513.866,
+          "ttft_ms": 3665.1132500010135,
+          "total_ms": 10183.752667002409,
+          "gen_tps": 19.650388878125526,
+          "e2e_tps": 12.569040528129484,
+          "finish_reason": "length",
+          "tokens_source": "engine",
+          "content_nonempty": true,
+          "done": true
+        },
+        {
+          "label": "stream-3",
+          "status": 200,
+          "prompt_tokens": 54,
+          "cached_tokens": 0,
+          "prefill_tokens": 54,
+          "completion_tokens": 128,
+          "engine_prefill_ms": 3050.62,
+          "engine_gen_ms": 6101.986,
+          "ttft_ms": 3669.234665998374,
+          "total_ms": 9771.958082998026,
+          "gen_tps": 20.976777068973938,
+          "e2e_tps": 13.098705388708519,
+          "finish_reason": "length",
+          "tokens_source": "engine",
+          "content_nonempty": true,
+          "done": true
+        }
+      ]
+    }
+  ],
+  "initial_attempt": {
+    "runtime_name": "a100-run-6",
+    "created_at_utc": "2026-10-02T16:44:25.928470+00:00",
+    "stopped_at_utc": "2026-10-02T16:57:00.074534+00:00",
+    "duration_seconds": 754.1460638046265,
+    "rate_cu_per_hour": 5.3,
+    "estimated_cu": 1.110270593934589,
+    "cap_cu": 4.0,
+    "stop_confirmed": true,
+    "final_state": "stopped",
+    "failure": "second streamed 27B request returned 502 upstream: RemoteProtocolError",
+    "successful_stream_generation_tps": 46.44541955635191,
+    "included_in_comparison": false
+  },
+  "estimated_total_cu": 3.457577401863204,
+  "console_verification": {
+    "stats_api_status": 200,
+    "models_page_status": 200,
+    "rollup_includes_warmup_and_correctness": true,
+    "rollup": [
+      {
+        "gpu": "A100",
+        "model": "huihui.ai/qwen3.8-27b-abliterated",
+        "kv": "f16",
+        "requests": 10,
+        "tokens_in": 302,
+        "tokens_out": 540,
+        "gen_tps_p50": 46.5,
+        "ttft_ms_p50": 841
+      },
+      {
+        "gpu": "A100",
+        "model": "huihui.ai/qwen3.8-flash-next-abliterated",
+        "kv": "f16",
+        "requests": 6,
+        "tokens_in": 205,
+        "tokens_out": 398,
+        "gen_tps_p50": 18.7,
+        "ttft_ms_p50": 3668
+      }
+    ]
+  },
+  "notes": [
+    "Flash-Next shards were prefetched concurrently with 27B setup; its download_s covers only the remaining wait during reconfiguration, not the entire 111GB transfer.",
+    "The initial upstream failure had the same signature as a locally reproduced stale-connection failure. Fresh upstream connections passed all subsequent requests; the origin of the original connection closure is unproven.",
+    "Engine timing speed uses colabinet output-count/generation-ms convention; llama-server log speed uses generated-token intervals and can differ slightly.",
+    "This is a short-prompt, single-slot 128-output-token check, not a long-context, concurrency, quality, or vision benchmark.",
+    "CLI balance deltas include concurrent account activity and unsettled billing; cost is rate times runtime duration.",
+    "This artifact excludes prompt and response bodies and client monotonic timestamps."
+  ]
+}

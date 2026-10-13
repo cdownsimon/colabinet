@@ -1,0 +1,30 @@
+{% from "macros.html" import icon %}
+{% if error %}
+<div class="alert" data-variant="destructive">{{ icon('alert') }}<h2>Query error</h2><section><p>{{ error }}</p></section></div>
+<span id="metrics-state" class="cb-query-state" role="status" aria-live="polite" hx-swap-oob="innerHTML"><span class="cb-query-state-default">{{ error }}</span><span class="cb-query-state-running">Running query…</span></span>
+{% else %}
+<span id="metrics-state" class="cb-query-state" role="status" aria-live="polite" hx-swap-oob="innerHTML"><span class="cb-query-state-default">{{ res.rows | length }} row{{ '' if res.rows | length == 1 else 's' }}{% if res.note %} · {{ res.note }}{% endif %} · results below</span><span class="cb-query-state-running">Running query…</span></span>
+<div class="cb-row cb-result-bar">
+  <span class="cb-muted">{{ res.rows | length }} row{{ '' if res.rows | length == 1 else 's' }}{% if res.note %} · {{ res.note }}{% endif %}</span>
+  <a class="btn" data-size="sm" data-variant="outline" href="/ui/metrics/export.csv?spec={{ spec_json | urlencode }}">{{ icon('download') }}Export CSV</a>
+</div>
+
+{% set plotted = (spec.measures | reject('equalto', 'requests') | list or spec.measures)[:1] %}
+{% if spec.chart != 'table' and res.rows and spec.group_by %}
+{% set rows = [] %}
+{% for result_row in res.rows %}
+  {% set label = result_row[:spec.group_by | length] | map('string') | join(' · ') %}
+  {% set chart_row = {'label': label} %}
+  {% for measure in spec.measures %}{% set _ = chart_row.update({measure: result_row[(spec.group_by | length) + loop.index0]}) %}{% endfor %}
+  {% set _ = rows.append(chart_row) %}
+{% endfor %}
+<p class="cb-chart-caption">Charted measure: <strong>{{ plotted[0] | replace('_', ' ') }}</strong></p>
+<div class="chart cb-chart"><canvas data-cb-chart data-chart-type="{{ spec.chart }}" data-chart-legend="false"
+  data-chart-data='{{ rows | tojson }}' data-chart-series='{{ plotted | tojson }}'></canvas></div>
+{% endif %}
+<div class="table-container"><table class="table">
+  <caption class="cb-visually-hidden">Query result rows</caption>
+  <thead><tr>{% for custom_model in res.columns %}<th {% if loop.index > spec.group_by | length %}class="cb-num"{% endif %}>{{ custom_model | replace('_', ' ') }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for row in res.rows %}<tr>{% for config in row %}<td {% if loop.index > spec.group_by | length %}class="cb-num"{% endif %}>{{ config | num(2) if config is number else (config if config is not none else '-') }}</td>{% endfor %}</tr>{% else %}<tr><td colspan="{{ res.columns | length }}" class="cb-muted">No data in this range.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}

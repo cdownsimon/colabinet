@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, card_title %}
+{% block title %}Settings{% endblock %}
+{% block crumbs %}<h1>Settings</h1>{% endblock %}
+{% block content %}
+{% set config = st.config %}
+{% include "partials/google_account.html" %}
+<div class="cb-grid-2">
+  <section class="card"><header>{{ card_title('Defaults & guards', 'shield') }}<p>Limits that stop spending, applied to every new session.</p></header>
+    <section><form class="form" hx-post="/ui/actions/settings" hx-swap="none"><div class="cb-form-grid cb-form-grid--auto">
+      <div class="field"><label class="label" for="s-cap">Daily CU cap</label><input class="input" id="s-cap" name="daily_cap_cu" type="number" step="0.5" min="0" value="{{ config.daily_cap_cu }}"><p class="cb-muted">0 turns the cap off</p></div>
+      <div class="field"><label class="label" for="s-low">Low-balance warning</label><input class="input" id="s-low" name="low_balance_cu" type="number" step="1" min="0" value="{{ config.low_balance_cu }}"><p class="cb-muted">CU remaining on the account</p></div>
+      <div class="field"><label class="label" for="s-idle">Default idle stop</label><input class="input" id="s-idle" name="idle_min_default" type="number" min="0" value="{{ config.idle_min_default }}"><p class="cb-muted">Minutes without use, 0 disables</p></div>
+      <fieldset class="field cb-span-4 cb-gpu-options"><legend class="label">Eligible GPUs</legend>
+        <div class="cb-chips">{% for gpu_type in st.gpu_types %}
+          <label class="cb-checkbox"><input class="input" type="checkbox" name="eligible_gpus" value="{{ gpu_type }}" {% if gpu_type in st.eligible_gpus %}checked{% endif %}> {{ gpu_type }}</label>
+        {% endfor %}</div>
+        <p class="cb-muted">A100 and T4 include their high-memory variants. CPU is always available.</p>
+      </fieldset>
+      <div class="cb-span-4"><label class="cb-setting-row"><div><strong>macOS notifications</strong><span>Show a notification for critical alerts</span></div><input type="checkbox" role="switch" class="input" name="notify" aria-label="macOS notifications for critical alerts" {% if config.notify %}checked{% endif %}></label></div>
+    </div><div class="cb-row cb-form-footer"><button class="btn" type="submit">{{ icon('save') }}Save</button></div></form></section>
+  </section>
+  <section class="card"><header>{{ card_title('Colab', 'terminal') }}<p>How this console reaches Colab. Fixed when colabinet starts.</p></header><section><dl class="cb-kv">
+    <dt>CLI</dt><dd><code class="cb-path">{{ st.colab_bin }}</code> · {{ st.cli_version or 'version unknown' }}{% if st.cli_version %} <span class="badge" data-tone="success">ok</span>{% endif %}</dd>
+    <dt>Google authentication</dt><dd>{{ 'Google account OAuth2' if st.colab_auth == 'oauth2' else 'Application Default Credentials (ADC)' }}</dd>
+    <dt>SSH key</dt><dd><code class="cb-path">{{ st.ssh_key }}</code> {% if st.ssh_key_ok %}<span class="badge" data-tone="success">present</span>{% else %}<span class="badge" data-tone="danger">missing (ed25519 needed)</span>{% endif %}</dd>
+    <dt>HF token</dt><dd>{{ 'set via HF_TOKEN (not stored)' if st.hf_token else 'not set (fine for public models)' }}</dd>
+    <dt>Database</dt><dd><code class="cb-path">{{ st.db_path }}</code> · {{ st.db_mb }} MB</dd>
+    <dt>Setup limit</dt><dd>{{ st.setup_limit_s | dur }}</dd>
+    <dt>Failure grace</dt><dd>{{ st.grace_s | dur }}</dd>
+    <dt>Proxy ports</dt><dd>from {{ st.proxy_port_start }} · hidden {{ st.hidden_port_range[0] }}–{{ st.hidden_port_range[1] }}</dd>
+    <dt>On quit</dt><dd>{{ 'stop every managed session (--stop-on-exit)' if st.stop_on_exit else 'leave sessions running and billing (start with --stop-on-exit to stop managed sessions on quit)' }}</dd>
+  </dl></section></section>
+</div>
+<section class="card"><header>{{ card_title('GPU rates', 'coins') }}<p>CU per hour: seeded from measurements, then learned from <code>colab usage</code> after each create.</p></header>
+  <section><div class="table-container"><table class="table">
+    <caption class="cb-visually-hidden">GPU rates per class</caption>
+    <thead><tr><th>Class</th><th class="cb-num">VRAM</th><th class="cb-num">System RAM</th><th class="cb-num">CU/h</th><th>Rate source</th><th>Rate updated</th></tr></thead>
+    <tbody>{% for row in st.rates %}<tr>
+      <td><strong>{{ row.gpu }}</strong></td>
+      <td class="cb-num">{% if row.vram %}{{ row.vram | num(1) }} GB{% else %}—{% endif %}</td>
+      <td class="cb-num">{{ '~' if row.ram_source == 'reference' else '' }}{{ row.ram_gb | num(1) }} GB
+        <small class="cb-ram-source">{{ 'Last observed' if row.ram_source == 'observed' else 'Reference' }}</small>
+      </td>
+      <td class="cb-num"><strong>{{ row.rate | num(2) }}</strong></td><td><span class="badge" data-tone="{{ 'info' if row.source == 'learned' else 'neutral' }}">{{ row.source }}</span></td><td class="cb-muted">{{ row.updated_at | day }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div><p class="cb-muted cb-resource-note">System RAM is host memory, separate from GPU VRAM. Latest recorded allocations take precedence; ~ values are approximate references and may vary.</p></section>
+</section>
+{% endblock %}

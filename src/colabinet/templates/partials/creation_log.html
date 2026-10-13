@@ -1,0 +1,6 @@
+{% set creation = creation | default({'exit_code': none, 'output': '', 'error': 'Creation output was not retained. See the lifecycle events below for any saved error.'}) %}
+<div class="cb-log-head"><h3>Creation log</h3>
+<p class="cb-muted">{% if creation.exit_code is not none %}Exit code {{ creation.exit_code }} · {% endif %}Retained CLI output, up to 65,536 characters. Credentials are redacted.</p></div>
+<pre class="cb-log">{% if creation.output %}{{ creation.output }}{% elif creation.error %}{{ creation.error }}
+
+Full CLI output was not captured for this attempt.{% else %}No creation output captured yet. Output is saved when colab new exits.{% endif %}</pre>

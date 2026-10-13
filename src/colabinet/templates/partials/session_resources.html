@@ -1,0 +1,31 @@
+{% from "macros.html" import icon, meter %}
+{% set cpu = resources.cpu %}{% set ram = resources.ram %}{% set disk = resources.disk %}{% set gpu = resources.gpu %}
+{% set cpu_pct = cpu.get('percent') %}{% set gpu_pct = gpu.get('utilization_pct') %}
+<div class="cb-resource-heading cb-row">
+  <h2 class="cb-section-title">Runtime resources</h2>
+  <span class="badge cb-state" data-tone="{{ 'neutral' if resources.ended else 'warning' if resources.stale else 'success' }}">{{ 'Session ended' if resources.ended else 'Stale' if resources.stale else 'Live' }}</span>
+  <span class="cb-muted cb-right">{% if resources.sampled_at %}Last received {{ resources.sampled_at | when }} · {{ resources.sampled_at | ago }}{% else %}No readings yet{% endif %}</span>
+</div>
+<div class="cb-resources">
+  <section class="card cb-resource" data-cb-key="cpu"><header><h3>{{ icon('cpu') }}CPU</h3><p>Average since previous sample</p></header><section>
+    <div class="cb-resource-value" data-cb-key="value">{{ cpu_pct | num(1) if cpu_pct is not none else '—' }}{% if cpu_pct is not none %}<small data-cb-key="unit">%</small>{% endif %}</div>
+    {% if cpu_pct is not none %}{{ meter(cpu_pct, 'CPU usage', key='progress') }}{% endif %}
+    <p class="cb-muted" data-cb-key="note">{{ cpu.get('cores') or 'Unknown' }} logical cores</p>
+  </section></section>
+  <section class="card cb-resource" data-cb-key="ram"><header><h3>{{ icon('memory') }}RAM</h3><p>Used / total · cache available</p></header><section>
+    <div class="cb-resource-value" data-cb-key="value">{{ (ram.used_bytes / 1073741824) | num(1) if ram.get('used_bytes') is not none else '—' }}<small> / {{ (ram.total_bytes / 1073741824) | num(1) if ram.get('total_bytes') else '—' }} GiB</small></div>
+    {% if ram.percent is not none %}{{ meter(ram.percent, 'RAM usage', key='progress') }}{% endif %}
+    <p class="cb-muted" data-cb-key="note">{{ (ram.available_bytes / 1073741824) | num(1) if ram.get('available_bytes') is not none else '—' }} GiB available</p>
+  </section></section>
+  <section class="card cb-resource" data-cb-key="disk"><header><h3>{{ icon('disk') }}Disk</h3><p>VM content filesystem · used / total</p></header><section>
+    <div class="cb-resource-value" data-cb-key="value">{{ (disk.used_bytes / 1073741824) | num(1) if disk.get('used_bytes') is not none else '—' }}<small> / {{ (disk.total_bytes / 1073741824) | num(1) if disk.get('total_bytes') else '—' }} GiB</small></div>
+    {% if disk.percent is not none %}{{ meter(disk.percent, 'Disk usage', key='progress') }}{% endif %}
+    <p class="cb-muted" data-cb-key="note">{{ (disk.free_bytes / 1073741824) | num(1) if disk.get('free_bytes') is not none else '—' }} GiB free</p>
+  </section></section>
+  <section class="card cb-resource" data-cb-key="gpu"><header><h3>{{ icon('gpu') }}GPU</h3><p>{{ gpu.get('name') or ('CPU runtime' if resources.cpu_only else 'Not available') }}</p></header><section>
+    <div class="cb-resource-value" data-cb-key="value">{{ gpu_pct | num(0) if gpu_pct is not none else '—' }}{% if gpu_pct is not none %}<small data-cb-key="unit">%</small>{% endif %}<small class="cb-right" data-cb-key="temperature">{{ gpu.get('temperature_c') if gpu.get('temperature_c') is not none else '—' }} °C</small></div>
+    <p class="cb-muted" data-cb-key="note">VRAM {{ (gpu.used_mib / 1024) | num(1) if gpu.get('used_mib') is not none else '—' }} / {{ (gpu.vram_mib / 1024) | num(1) if gpu.get('vram_mib') else '—' }} GiB</p>
+    {% if resources.vram_pct is not none %}{{ meter(resources.vram_pct, 'VRAM usage', key='progress') }}{% endif %}
+  </section></section>
+</div>
+<p class="cb-muted cb-resource-note">{% if resources.ended %}Last readings retained in this console process; no further sampling.{% else %}VM readings refresh about every 15s while this page is visible. Unknown readings show —; viewing does not extend the idle timer.{% endif %}</p>

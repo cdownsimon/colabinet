@@ -1,0 +1,14 @@
+{% from "macros.html" import empty, nav_attrs %}
+{% if overview_data.activity %}
+<ol class="cb-feed">
+{% for event in overview_data.activity %}
+  <li><time>{{ event.ts | when }}</time>
+    <span>{% if event.colab_name %}<a href="/sessions/{{ event.session_id }}" {{ nav_attrs() }}>{{ event.colab_name }}</a> {% endif %}
+    {%- if event.kind == 'state' %}{{ event.detail.frm | replace('_', ' ') }} → <strong>{{ event.detail.to | replace('_', ' ') }}</strong>{% if event.detail.stop_reason %} <span class="cb-muted">({{ event.detail.stop_reason }})</span>{% endif %}
+    {%- elif event.kind.startswith('vm:') %}{{ event.kind[3:] | replace('_', ' ') }}{% if event.detail.get('seconds') is not none %} <span class="cb-muted">· {{ event.detail.seconds }} s</span>{% endif %}{% if event.detail.get('gb') %} <span class="cb-muted">· {{ event.detail.gb }} GB</span>{% endif %}
+    {%- else %}{{ event.kind | replace('_', ' ') }}{% if event.detail.reason %} <span class="cb-muted">· {{ event.detail.reason }}</span>{% endif %}{% if event.detail.gpu %} <span class="cb-muted">· {{ event.detail.gpu }}</span>{% endif %}{% endif %}</span></li>
+{% endfor %}
+</ol>
+{% else %}
+{{ empty("Nothing yet", "Session events appear here as they happen.", "activity") }}
+{% endif %}

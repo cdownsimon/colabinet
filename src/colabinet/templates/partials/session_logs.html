@@ -1,0 +1,4 @@
+{% if creation is defined %}<div id="session-creation-log" hx-swap-oob="innerHTML">{% include "partials/creation_log.html" %}</div>{% endif %}
+{% if events %}<ol hx-swap-oob="beforeend:#session-log-events">{% for event in events %}<li><time>{{ event.ts | when }}</time><span><strong>{{ event.kind }}</strong> {{ event.detail_json or '' }}</span></li>{% endfor %}</ol>{% endif %}
+{% if lines %}<pre hx-swap-oob="beforeend:#session-log-lines">{% for line in lines %}{{ line }}
+{% endfor %}</pre>{% endif %}

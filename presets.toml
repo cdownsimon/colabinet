@@ -1,0 +1,435 @@
+# colabinet model presets. Edit by hand; reload with `colabinet ctl presets` (plan 2 adds a UI button).
+# Per-GPU defaults are keyed by rate class: CPU, T4, T4-HIGHMEM, L4, A100, A100-80, G4
+# (A100-80 falls back to A100 and T4-HIGHMEM to T4 when missing).
+
+[engines.llamacpp]
+release = "b11273"  # prebuilt llama-<release>-bin-ubuntu-cuda-12.8-x64 (bundles its own cudart)
+
+[engines.exllamav3]
+wheel = "1.5.2"
+tabbyapi_commit = "be74bf0a00bcb3a518e6feb7606f150c189be637"
+
+[engines.strata]
+release = "d6708a4aae15b4860000d54c8af9e84d684bce09"  # engine 0.1.29, measured on Colab L4 and A100 40GB
+
+[[preset]]
+id = "qwen38-27b-abl-q4k"
+engine = "llamacpp"
+label = "Qwen3.8-27B abliterated Q4_K (+vision)"
+repo = "huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF"
+file = "Huihui-Qwen3.8-27B-abliterated-Q4_K.gguf"
+mmproj = "mmproj-model-bf16.gguf"
+template = "qwen38_effort_map.jinja"  # in src/colabinet/chat_templates/
+alias = "huihui.ai/qwen3.8-27b-abliterated"
+weights_gb = 16.8
+kv_bytes_per_token_f16 = 65536
+licence = "Apache-2.0"
+parallel = 1
+
+[preset.gpu.L4]
+ctx = 262144
+kv = "q4_0"
+mmproj_gpu = false
+
+[preset.gpu.A100]
+ctx = 262144
+kv = "q8_0"
+mmproj_gpu = true
+
+[preset.gpu.A100-80]
+ctx = 262144
+kv = "f16"
+mmproj_gpu = true
+
+[preset.gpu.G4]
+ctx = 262144
+kv = "f16"
+mmproj_gpu = true
+
+# The original (not abliterated) model. Unsloth's dynamic UD-Q4_K_M is the closest in size to the abliterated
+# Q4_K above (16.46 vs 16.81 GB), so it keeps the same per-GPU defaults; the 18.97 GB ggml-org Q4_K_M would
+# not fit L4 at 256K. The stock chat template matches Qwen/Qwen3.8-27B, so the effort-mapped one applies.
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+T4 = { gen_tps = 1.0, prefill_tps = 140, date = "2026-10-13", note = "CPU offload" }
+T4-HIGHMEM = { gen_tps = 3.0, prefill_tps = 167, date = "2026-10-13", note = "CPU offload" }
+L4 = { gen_tps = 13.1, prefill_tps = 660, date = "2026-10-13" }
+A100 = { gen_tps = 43.0, prefill_tps = 1194, date = "2026-10-13" }
+A100-80 = { gen_tps = 45.2, prefill_tps = 1214, date = "2026-10-13" }
+G4 = { gen_tps = 67.8, prefill_tps = 3527, date = "2026-10-13" }
+
+[[preset]]
+id = "qwen38-27b-q4km"
+engine = "llamacpp"
+label = "Qwen3.8-27B UD-Q4_K_M (+vision)"
+repo = "unsloth/Qwen3.8-27B-GGUF"
+file = "Qwen3.8-27B-UD-Q4_K_M.gguf"
+mmproj = "mmproj-BF16.gguf"
+template = "qwen38_effort_map.jinja"
+alias = "qwen/qwen3.8-27b"
+weights_gb = 16.5
+kv_bytes_per_token_f16 = 65536
+licence = "Apache-2.0"
+parallel = 1
+
+[preset.gpu.L4]
+ctx = 262144
+kv = "q4_0"
+mmproj_gpu = false
+
+[preset.gpu.A100]
+ctx = 262144
+kv = "q8_0"
+mmproj_gpu = true
+
+[preset.gpu.A100-80]
+ctx = 262144
+kv = "f16"
+mmproj_gpu = true
+
+[preset.gpu.G4]
+ctx = 262144
+kv = "f16"
+mmproj_gpu = true
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+CPU = { gen_tps = 0.024, date = "2026-10-13", note = "4 tokens out; the model pages from disk" }
+T4 = { gen_tps = 1.2, date = "2026-10-13", note = "CPU offload" }
+T4-HIGHMEM = { gen_tps = 3.9, prefill_tps = 200, date = "2026-10-13", note = "CPU offload" }
+L4 = { gen_tps = 14.6, prefill_tps = 715, date = "2026-10-13" }
+A100 = { gen_tps = 47.2, prefill_tps = 1219, date = "2026-10-13" }
+A100-80 = { gen_tps = 49.4, prefill_tps = 1230, date = "2026-10-13" }
+G4 = { gen_tps = 71.2, prefill_tps = 3652, date = "2026-10-13" }
+
+[[preset]]
+id = "qwen38-27b-abl-exl3-4bpw"
+engine = "exllamav3"
+label = "Qwen3.8-27B abliterated EXL3 4.0 bpw (+vision)"
+repo = "turboderp/Huihui-Qwen3.8-27B-abliterated-exl3"
+revision = "4.00bpw"
+template = "qwen38_effort_map.jinja"
+alias = "huihui.ai/qwen3.8-27b-abliterated"
+vision = true
+vision_offload = true  # Keep vision weights in system RAM; stream them to the GPU for image encoding.
+weights_gb = 13.2  # Estimated text weights on GPU; vision weights are offloaded by default.
+kv_bytes_per_token_f16 = 65536
+licence = "Apache-2.0 (Hugging Face metadata)"
+parallel = 1
+
+[preset.gpu.L4]
+ctx = 65536
+kv = "FP16"
+
+[preset.gpu.A100]
+ctx = 262144
+kv = "FP16"
+
+[preset.gpu.G4]
+ctx = 262144
+kv = "FP16"
+
+# The original (not abliterated) model from the same quantizer and bitrate. Its layers and lm_head are the same
+# 13.2 GB as the abliterated build (embeddings stay in system RAM); only the offloaded vision tower is larger.
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+L4 = { gen_tps = 16.2, prefill_tps = 736, date = "2026-10-13" }
+A100 = { gen_tps = 46.9, prefill_tps = 2639, date = "2026-10-13" }
+A100-80 = { gen_tps = 48.9, prefill_tps = 2673, date = "2026-10-13" }
+G4 = { gen_tps = 67.8, prefill_tps = 4854, date = "2026-10-13" }
+
+[[preset]]
+id = "qwen38-27b-exl3-4bpw"
+engine = "exllamav3"
+label = "Qwen3.8-27B EXL3 4.0 bpw (+vision)"
+repo = "turboderp/Qwen3.8-27B-exl3"
+revision = "4.00bpw"
+template = "qwen38_effort_map.jinja"
+alias = "qwen/qwen3.8-27b"
+vision = true
+vision_offload = true  # Keep vision weights in system RAM; stream them to the GPU for image encoding.
+weights_gb = 13.2  # Estimated text weights on GPU; vision weights are offloaded by default.
+kv_bytes_per_token_f16 = 65536
+licence = "Apache-2.0"
+parallel = 1
+
+[preset.gpu.L4]
+ctx = 65536
+kv = "FP16"
+
+[preset.gpu.A100]
+ctx = 262144
+kv = "FP16"
+
+[preset.gpu.G4]
+ctx = 262144
+kv = "FP16"
+
+# Flash-Next is 180B total, not a 27B-sized model. The four Q4 shards total 111.33 GB.
+# A100 40GB requires CPU offload and sufficient host RAM; fit remains advisory.
+# Start with 8K context. KV size is deliberately unknown for this hybrid architecture.
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+L4 = { gen_tps = 16.3, prefill_tps = 525, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
+A100 = { gen_tps = 47.5, prefill_tps = 795, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
+A100-80 = { gen_tps = 46.5, prefill_tps = 727, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
+G4 = { gen_tps = 65.3, prefill_tps = 2346, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
+
+[[preset]]
+id = "qwen38-flash-next-abl-q4k-xl"
+engine = "llamacpp"
+label = "Qwen3.8-Flash-Next abliterated UD-Q4_K_XL (+vision, CPU offload)"
+repo = "huihui-ai/Huihui-Qwen3.8-Flash-Next-abliterated-GGUF"
+file = "unsloth-UD-Q4_K_XL/Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf"  # folder renamed upstream
+mmproj = "mmproj-model-bf16.gguf"
+template = "qwen38_effort_map.jinja"
+alias = "huihui.ai/qwen3.8-flash-next-abliterated"
+weights_gb = 111.334655392
+licence = "Qwen Community License 1.0 (Hugging Face metadata)"
+parallel = 1
+
+[preset.gpu.A100]
+ctx = 8192
+kv = "f16"
+
+[preset.gpu.A100-80]
+ctx = 8192
+kv = "f16"
+
+[preset.gpu.G4]
+ctx = 8192
+kv = "f16"
+
+# Strata caches experts in VRAM and keeps the expert arena in host RAM.
+# weights_gb counts both GGUF shards, NOT required VRAM. The 28.8 GB PLE table is shared.
+# Vision is required for these presets; refusal projection remains opt-in.
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+T4 = { gen_tps = 0.24, date = "2026-10-13", note = "weights page from disk" }
+T4-HIGHMEM = { gen_tps = 1.8, prefill_tps = 9, date = "2026-10-13", note = "weights page from disk" }
+L4 = { gen_tps = 3.0, prefill_tps = 11, date = "2026-10-13", note = "weights page from disk" }
+A100 = { gen_tps = 8.0, prefill_tps = 90, date = "2026-10-13", note = "CPU offload, first request; warmed 2026-10-03 runs measured 19.7 tok/s" }
+A100-80 = { gen_tps = 38.7, prefill_tps = 886, date = "2026-10-13" }
+G4 = { gen_tps = 50.8, prefill_tps = 1366, date = "2026-10-13" }
+
+[[preset]]
+id = "qwen38-flash-next-strata-iq2-xs"
+engine = "strata"
+label = "Qwen3.8-Flash-Next Strata IQ2_XS (+vision)"
+repo = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
+file = "IQ2_XS/Qwen3.8-Flash-Next-GSQ-RCO-IQ2_XS-00001-of-00002.gguf"
+alias = "qwen3.8-flash-next-iq2-xs"
+vision = true
+weights_gb = 68.026093024
+licence = "Qwen Community License 1.0 (base model; review quant publisher metadata)"
+parallel = 1
+
+[preset.gpu.L4]
+ctx = 131072
+kv = "int8"
+
+[preset.gpu.A100]
+ctx = 131072
+kv = "int8"
+
+[preset.gpu.G4]
+ctx = 131072
+kv = "int8"
+
+[preset.evidence.L4]
+status = "tested"
+message = """Saved IQ2_XS text and GPU-vision runs on L4 with about 52 GiB host RAM,
+128K context limit and int8 KV. Image/OCR and 4K text passed at about 21.7 GiB total GPU use.
+Long mmap prompts stalled; this is not full-context validation.
+Source: Strata benchmark runs, 2026-09-30."""
+performance = """GPU vision, direct PLE: 43.4 t/s median (2 req, 512 tokens out), 1,119–3,626 input tokens.
+Text-only, direct PLE: 43.8 t/s median (5 req, 1,280 tokens out), 1,119–120,950 input tokens."""
+
+[preset.evidence.A100]
+status = "tested"
+message = """Saved IQ2_XS text and GPU-vision runs on A100 40GB with about 83 GiB host RAM,
+128K context limit and int8 KV. The warmed RAM-PLE vision run used about 39.2 GiB total GPU memory;
+image/OCR and 4K text passed. Source: Strata benchmark runs, 2026-10-02."""
+performance = """Text-only, direct PLE: 60.5 t/s median (5 req, 1,280 tokens out).
+Text-only, warmed RAM-PLE: 88.8 t/s median (5 req, 1,280 tokens out).
+Both text-only profiles used 1,119–120,950 input tokens.
+GPU vision, warmed RAM-PLE: 91.6 t/s median (2 req, 512 tokens out), 1,119–3,626 input tokens."""
+
+[preset.evidence.T4-HIGHMEM]
+status = "tested"
+message = """Preset test matrix on T4-HIGHMEM (Tesla T4 16GB, 54.8 GB host RAM): 32K context limit, int8 KV, GPU vision and
+normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.evidence.A100-80]
+status = "tested"
+message = """Preset test matrix on A100 80GB (179.4 GB host RAM): 128K context limit, int8 KV, GPU vision and
+normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.evidence.G4]
+status = "tested"
+message = """Preset test matrix on G4 (RTX PRO 6000 Blackwell 96GB, 189.9 GB host RAM): 128K context limit, int8 KV, GPU vision and
+normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+T4-HIGHMEM = { gen_tps = 14.4, prefill_tps = 346, date = "2026-10-13" }
+L4 = { gen_tps = 28.4, prefill_tps = 1075, date = "2026-10-13" }
+A100 = { gen_tps = 42.2, prefill_tps = 1625, date = "2026-10-13" }
+A100-80 = { gen_tps = 66.6, prefill_tps = 1924, date = "2026-10-13" }
+G4 = { gen_tps = 87.9, prefill_tps = 3746, date = "2026-10-13" }
+
+[[preset]]
+id = "qwen38-flash-next-strata-iq3-xxs"
+engine = "strata"
+label = "Qwen3.8-Flash-Next Strata IQ3_XXS (+vision)"
+repo = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
+file = "IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00001-of-00002.gguf"
+alias = "qwen3.8-flash-next-iq3-xxs"
+vision = true
+weights_gb = 75.839998528
+licence = "Qwen Community License 1.0 (base model; review quant publisher metadata)"
+parallel = 1
+
+[preset.gpu.L4]
+ctx = 32768
+kv = "int8"
+# The tested L4 run used explicit low-RAM mode. In auto mode Strata refuses IQ3_XXS on an L4 (about 53 GiB
+# host RAM, under its 56 GiB bar), as a 2026-10-13 matrix run confirmed.
+extra_args = ["--low-ram", "on"]
+
+[preset.gpu.A100]
+ctx = 131072
+kv = "int8"
+
+[preset.gpu.G4]
+ctx = 131072
+kv = "int8"
+
+[preset.evidence.L4]
+status = "tested"
+message = """Paid IQ3_XXS normal and refusal-projection runs on L4 with about 53 GiB host RAM,
+32K context limit, int8 KV, GPU vision, direct PLE I/O and explicit --low-ram on.
+Text, streaming, image/OCR and 1K/4K/24K nominal prompts passed; longest input 23,469 tokens.
+Per-request projection disable was exercised. Not full-32K validation.
+Source: Strata benchmark runs, 2026-10-06."""
+performance = """Normal: 23.3 t/s median (3 req, 768 tokens out).
+Refusal projection: 33.4 t/s median (3 req, 768 tokens out).
+Both profiles used GPU vision, direct PLE, --low-ram on and 1,119–23,469 input tokens."""
+
+[preset.evidence.A100]
+status = "tested"
+message = """Paid IQ3_XXS normal and refusal-projection runs on A100 40GB with about 83 GiB host RAM,
+128K context limit, int8 KV, GPU vision and direct PLE I/O. Text, streamed arithmetic, image/OCR and
+1K/4K/32K/96K nominal prompts passed; the longest input was 88,283 tokens, not full-context validation.
+Per-request projection disable was exercised. Source: Strata benchmark runs,
+2026-10-05."""
+performance = """Normal: 58.9 t/s median (4 req, 1,024 tokens out).
+Refusal projection: 56.0 t/s median (4 req, 1,024 tokens out).
+Both profiles used A100 40GB, GPU vision, direct PLE and 1,119–88,283 input tokens."""
+
+[preset.evidence.T4-HIGHMEM]
+status = "tested"
+message = """Preset test matrix on T4-HIGHMEM (Tesla T4 16GB, 54.8 GB host RAM): 32K context limit, int8 KV, GPU vision and
+low-RAM mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.evidence.A100-80]
+status = "tested"
+message = """Preset test matrix on A100 80GB (179.4 GB host RAM): 128K context limit, int8 KV, GPU vision and
+normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.evidence.G4]
+status = "tested"
+message = """Preset test matrix on G4 (RTX PRO 6000 Blackwell 96GB, 189.9 GB host RAM): 128K context limit, int8 KV, GPU vision and
+normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+T4-HIGHMEM = { gen_tps = 3.4, prefill_tps = 57, date = "2026-10-13" }
+L4 = { gen_tps = 5.6, prefill_tps = 82, date = "2026-10-13" }
+A100 = { gen_tps = 37.9, prefill_tps = 1786, date = "2026-10-13" }
+A100-80 = { gen_tps = 41.9, prefill_tps = 1834, date = "2026-10-13" }
+G4 = { gen_tps = 48.5, prefill_tps = 3150, date = "2026-10-13" }
+
+[[preset]]
+id = "qwen38-flash-next-strata-iq3-s"
+engine = "strata"
+label = "Qwen3.8-Flash-Next Strata IQ3_S (+vision)"
+repo = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
+file = "IQ3_S/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf"
+alias = "qwen3.8-flash-next-iq3-s"
+vision = true
+weights_gb = 83.617662656
+licence = "Qwen Community License 1.0 (base model; review quant publisher metadata)"
+parallel = 1
+
+[preset.gpu.L4]
+ctx = 32768
+kv = "int8"
+extra_args = ["--low-ram", "on"]  # as tested on L4; auto mode also selects it there
+
+[preset.gpu.A100]
+ctx = 131072
+kv = "int8"
+
+[preset.gpu.G4]
+ctx = 131072
+kv = "int8"
+
+[preset.evidence.L4]
+status = "tested"
+message = """Paid IQ3_S normal and refusal-projection runs on L4 with about 53 GiB host RAM,
+32K context limit, int8 KV, GPU vision, direct PLE I/O and explicit --low-ram on.
+Text, streaming, image/OCR and 1K/4K/24K nominal prompts passed; longest input 23,469 tokens.
+Per-request projection disable was exercised. Not full-32K validation.
+Source: Strata benchmark runs, 2026-10-06."""
+performance = """Normal: 13.5 t/s median (3 req, 768 tokens out).
+Refusal projection: 13.7 t/s median (3 req, 768 tokens out).
+Both profiles used GPU vision, direct PLE, --low-ram on and 1,119–23,469 input tokens."""
+
+[preset.evidence.A100]
+status = "tested"
+message = """Paid IQ3_S normal and refusal-projection runs on A100 40GB with about 83 GiB host RAM,
+128K context limit, int8 KV, GPU vision and direct PLE I/O. Text, streamed arithmetic, image/OCR and
+1K/4K/32K/96K nominal prompts passed; the longest input was 88,283 tokens, not full-context validation.
+Per-request projection disable was exercised. Source: Strata benchmark runs,
+2026-10-05."""
+performance = """Normal: 54.9 t/s median (4 req, 1,024 tokens out).
+Refusal projection: 55.0 t/s median (4 req, 1,024 tokens out).
+Both profiles used A100 40GB, GPU vision, direct PLE and 1,119–88,283 input tokens."""
+
+[preset.evidence.T4-HIGHMEM]
+status = "tested"
+message = """Preset test matrix on T4-HIGHMEM (Tesla T4 16GB, 54.8 GB host RAM): 32K context limit, int8 KV, GPU vision and
+low-RAM mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.evidence.A100-80]
+status = "tested"
+message = """Preset test matrix on A100 80GB (179.4 GB host RAM): 128K context limit, int8 KV, GPU vision and
+normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.evidence.G4]
+status = "tested"
+message = """Preset test matrix on G4 (RTX PRO 6000 Blackwell 96GB, 189.9 GB host RAM): 128K context limit, int8 KV, GPU vision and
+normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token prompt and an image question
+passed on a freshly loaded engine; one cold pass, not full-context validation.
+Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
+
+[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
+T4-HIGHMEM = { gen_tps = 2.8, prefill_tps = 35, date = "2026-10-13" }
+L4 = { gen_tps = 4.3, prefill_tps = 53, date = "2026-10-13" }
+A100 = { gen_tps = 36.7, prefill_tps = 1602, date = "2026-10-13" }
+A100-80 = { gen_tps = 43.9, prefill_tps = 1810, date = "2026-10-13" }
+G4 = { gen_tps = 53.4, prefill_tps = 4018, date = "2026-10-13" }

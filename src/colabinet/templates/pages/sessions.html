@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, nav_attrs %}
+{% block title %}Sessions{% endblock %}
+{% block crumbs %}<h1>Sessions</h1>{% endblock %}
+{% block actions %}<a class="btn" data-size="sm" href="/new" {{ nav_attrs() }}>{{ icon('plus') }}New session</a>{% endblock %}
+{% block content %}
+<div class="cb-toolbar">
+  <div class="tabs">
+    <nav role="tablist" aria-orientation="horizontal">
+      {% for tab_name, label in [('live', 'Live'), ('history', 'History'), ('all', 'All')] %}
+      <a role="tab" href="/sessions?tab={{ tab_name }}" {{ nav_attrs() }} aria-selected="{{ 'true' if tab == tab_name else 'false' }}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+  <div class="cb-search-field">
+    {{ icon('search') }}
+    <input class="input cb-search" type="search" name="q" aria-label="Filter sessions" placeholder="Filter by name, model, GPU, engine or stop reason"
+           hx-get="/ui/sessions/table?tab={{ tab }}" hx-trigger="input changed delay:300ms" hx-target="#sessions-table" hx-swap="cb-patch" hx-indicator="#sessions-busy">
+  </div>
+  <span id="sessions-busy" class="cb-busy" role="status" aria-live="polite">Filtering…</span>
+</div>
+<section class="card">
+  <section id="sessions-table" hx-get="/ui/sessions/table?tab={{ tab }}" hx-include=".cb-search" hx-trigger="load, every 3s" hx-swap="cb-patch">
+    <p class="cb-muted">Loading…</p>
+  </section>
+</section>
+{% endblock %}

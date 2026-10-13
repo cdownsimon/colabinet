@@ -1,0 +1,12 @@
+{% from "macros.html" import empty %}
+{% if runs %}
+<div class="table-container"><table class="table">
+<caption class="cb-visually-hidden">Runs on this session</caption>
+  <thead><tr><th>Run</th><th>Engine</th><th>Model</th><th>Ctx · KV</th><th>Started</th><th>Ended</th><th class="cb-num">Install</th><th class="cb-num">Download</th><th class="cb-num">Load</th><th>Status</th></tr></thead>
+  <tbody>{% for row in runs %}
+    <tr data-cb-key="run-{{ row.id }}"><td class="cb-port">#{{ row.id }}</td><td>{{ row.engine }} <span class="cb-muted">{{ row.engine_version or '' }}</span></td><td class="cb-truncate" title="{{ row.repo }}">{{ row.alias }}</td><td>{{ ((row.ctx or 0) // 1024) }}K · {{ row.kv }}</td>
+      <td>{{ row.started_at | day }}</td><td>{{ row.ended_at | day }}</td><td class="cb-num">{{ row.install_s | dur }}</td><td class="cb-num">{{ row.download_s | dur }}</td><td class="cb-num">{{ row.load_s | dur }}</td>
+      <td>{{ row.status or '-' }}{% if row.error %} <span class="cb-muted" title="{{ row.error }}">· {{ row.error[:80] }}</span>{% endif %}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% else %}{{ empty("No runs", "Each engine start on this VM is recorded here as a run.", "layers") }}{% endif %}

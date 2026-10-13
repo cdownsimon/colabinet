@@ -1,0 +1,30 @@
+{% from "macros.html" import icon %}
+{# The same status the GPU choices show: red only when this class cannot run it, amber when it runs with a caveat. #}
+{% set danger = fit.status == 'blocked' %}
+{% set caution = fit.status == 'warn' %}
+{% set fits = gpu_fit | default({}) %}
+{# Fit of every offered class under these settings; app.js greys out the GPU choices from it. #}
+{% set slim = {} %}{% for name, row in fits.items() %}{% set _ = slim.update({name: {'status': row.status, 'label': row.label, 'message': row.message, 'measured': row.measured}}) %}{% endfor %}
+<div id="gpu-fit" hidden data-fit="{{ slim | tojson | forceescape }}" data-suggest="{{ suggest | default('') }}"></div>
+<div class="cb-stack">
+<div class="alert" {% if danger %}data-variant="destructive"{% elif caution %}data-variant="warning"{% else %}data-variant="success"{% endif %}>
+  {{ icon('alert') if danger or caution else icon('check-circle') }}
+  <h2>{{ 'GPU evidence' if engine == 'strata' else 'Fit' }} on {{ gpu }}: {{ fit_display.label }}</h2>
+  <section>
+    <p>{{ fit_display.message }}</p><p class="cb-muted">Context: {{ ctx | num }} tokens · KV cache: {{ kv }}{% if preset %} · {{ preset.label }}{% endif %}</p>
+    {% if fit.status == 'blocked' %}<p><strong>{{ gpu }} cannot run this configuration.</strong> Choose a GPU that is not greyed out, or change the model, context or KV cache.</p>{% endif %}
+    {% if engine == 'strata' %}<p>GPU vision enabled · single-sequence FIFO · experimental refusal projection: <strong>{{ 'on' if refusal_projection else 'off' }}</strong>.</p>{% if refusal_projection %}<p>Reduces refusals and changes model behavior; it does not guarantee an uncensored model.</p>{% endif %}{% endif %}
+  </section>
+</div>
+<dl class="cb-kv cb-review" id="cost-lines" data-summary="{{ gpu }} at {{ cost.rate | num(2) }} CU/h{% if cost.idle %}, idle stop {{ cost.idle }} min{% endif %}{% if cost.cap %}, cap {{ cost.cap }} CU{% endif %}{% if engine == 'strata' %}. Strata: GPU vision, single sequence, experimental refusal projection {{ 'on (reduces refusals and changes behavior; no uncensored guarantee)' if refusal_projection else 'off' }}{% endif %}">
+  <dt>Rate</dt><dd><strong>{{ cost.rate | num(2) }} CU/h</strong></dd>
+  {% if fit.measured %}{% set m = fit.measured %}<dt>Measured</dt><dd><strong>{{ m.gen }} tok/s</strong> generation{% if m.prefill %}, {{ m.prefill }} tok/s prefill on a 4K-token prompt{% endif %}, on {{ gpu }} at the preset's defaults{% if m.date %} ({{ m.date }}){% endif %}. {% if m.note %}{{ m.note[:1] | upper }}{{ m.note[1:] }}. {% endif %}One pass on a freshly loaded model; warmed speeds are usually higher.</dd>{% endif %}
+  <dt>Licence</dt><dd>{{ preset.licence if preset and preset.licence else 'Review the model card before use' }}</dd>
+  <dt>Setup</dt><dd>Installation and download time is billed, even before the endpoint is ready.</dd>
+  <dt>Endpoint port</dt><dd>{{ cost.endpoint }}</dd>
+  <dt>Idle guard</dt><dd>{% if cost.idle %}stops after {{ cost.idle }} min without use: at most ~{{ cost.idle_waste | num(2) }} CU unused{% else %}<strong class="cb-tone-warning">off</strong>{% endif %}</dd>
+  <dt>CU cap</dt><dd>{% if cost.cap %}stops at {{ cost.cap }} CU (~{{ cost.cap_minutes | num(0) }} min){% else %}none{% endif %}</dd>
+  <dt>Daily cap</dt><dd>{{ daily.spend | num(2) }} of {{ daily.cap | num(2) if daily.cap else 'no' }} CU used today{% if daily.minutes_left is defined %}; this session would hit it after ~{{ daily.minutes_left | num(0) }} min{% endif %}</dd>
+</dl>
+{% if cost.no_limit %}<div class="alert" data-variant="destructive">{{ icon('alert') }}<h2>Nothing will stop this session</h2><section><p>No idle stop, deadline or CU cap: only the daily cap limits it.</p></section></div>{% endif %}
+</div>

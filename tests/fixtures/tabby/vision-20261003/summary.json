@@ -1,0 +1,235 @@
+{
+  "date": "2026-10-03",
+  "preset": "qwen38-27b-abl-exl3-4bpw",
+  "model_id": "Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw",
+  "repo": "turboderp/Huihui-Qwen3.8-27B-abliterated-exl3",
+  "revision": "4.00bpw",
+  "tabby_commit": "be74bf0a00bcb3a518e6feb7606f150c189be637",
+  "exllamav3": "1.5.2",
+  "torch": "2.11.0+cu130",
+  "gpu": "NVIDIA L4",
+  "vram_total_mib": 23034,
+  "vram_loaded_mib": 17850,
+  "ctx": 65536,
+  "cache_mode": "FP16",
+  "parallel": 1,
+  "vision": true,
+  "vision_offload": true,
+  "props_modalities": {
+    "vision": true
+  },
+  "model_use_vision": true,
+  "server_ready": {
+    "t": 223.3,
+    "seconds": 96.1,
+    "vram_used_mib": 17850,
+    "modalities": {
+      "vision": true
+    },
+    "cmd": "tabbyAPI Huihui-Qwen3.8-27B-abliterated-exl3-4.00bpw FP16"
+  },
+  "ready_s": 290.7,
+  "billing_s": 372.8,
+  "estimated_cu": 0.159,
+  "rate_cu_h": 1.54,
+  "request_parameters": {
+    "temperature": 0,
+    "max_tokens": 160,
+    "chat_template_kwargs": {
+      "enable_thinking": false,
+      "reasoning_effort": "none"
+    }
+  },
+  "image_prompt": "List every colored shape from left to right. Reply only with a JSON array of objects with exactly the keys \"color\" and \"shape\". No explanation.",
+  "checks": [
+    {
+      "name": "loaded_vision_capability",
+      "passed": true
+    },
+    {
+      "name": "text_before",
+      "passed": true,
+      "http_status": 200,
+      "content": "391",
+      "stream": false,
+      "usage": {
+        "prompt_tokens": 29,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_time": 1.91,
+        "prompt_tokens_per_sec": 15.18,
+        "completion_tokens": 4,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        },
+        "completion_time": 0.24,
+        "completion_tokens_per_sec": 16.38,
+        "total_tokens": 33,
+        "total_time": 2.16
+      },
+      "elapsed_s": 2.417
+    },
+    {
+      "name": "image_a",
+      "passed": true,
+      "http_status": 200,
+      "content": "[\n  {\"color\": \"red\", \"shape\": \"circle\"},\n  {\"color\": \"blue\", \"shape\": \"square\"},\n  {\"color\": \"green\", \"shape\": \"triangle\"}\n]",
+      "stream": false,
+      "usage": {
+        "prompt_tokens": 333,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_time": 3.66,
+        "prompt_tokens_per_sec": 90.98,
+        "completion_tokens": 46,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        },
+        "completion_time": 2.84,
+        "completion_tokens_per_sec": 16.18,
+        "total_tokens": 379,
+        "total_time": 6.52
+      },
+      "elapsed_s": 7.792
+    },
+    {
+      "name": "image_b",
+      "passed": true,
+      "http_status": 200,
+      "content": "```json\n[\n  {\"color\": \"yellow\", \"shape\": \"triangle\"},\n  {\"color\": \"purple\", \"shape\": \"circle\"}\n]\n```",
+      "stream": false,
+      "usage": {
+        "prompt_tokens": 333,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_time": 0.89,
+        "prompt_tokens_per_sec": 374.16,
+        "completion_tokens": 37,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        },
+        "completion_time": 2.29,
+        "completion_tokens_per_sec": 16.15,
+        "total_tokens": 370,
+        "total_time": 3.18
+      },
+      "elapsed_s": 3.465
+    },
+    {
+      "name": "vision_stream",
+      "passed": true,
+      "http_status": 200,
+      "content": "3",
+      "stream": true,
+      "done": true,
+      "usage": {
+        "prompt_tokens": 315,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_time": 1.18,
+        "prompt_tokens_per_sec": 266.95,
+        "completion_tokens": 2,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        },
+        "completion_time": 0.12,
+        "completion_tokens_per_sec": 16.17,
+        "total_tokens": 317,
+        "total_time": 1.31
+      },
+      "elapsed_s": 1.593
+    },
+    {
+      "name": "image_history_followup",
+      "passed": true,
+      "http_status": 200,
+      "content": "Blue",
+      "stream": false,
+      "usage": {
+        "prompt_tokens": 405,
+        "prompt_tokens_details": {
+          "cached_tokens": 256
+        },
+        "prompt_time": 1.07,
+        "prompt_tokens_per_sec": 139.25,
+        "completion_tokens": 2,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        },
+        "completion_time": 0.13,
+        "completion_tokens_per_sec": 15.91,
+        "total_tokens": 407,
+        "total_time": 1.24
+      },
+      "elapsed_s": 1.444
+    },
+    {
+      "name": "two_images",
+      "passed": true,
+      "http_status": 200,
+      "content": "5",
+      "stream": false,
+      "usage": {
+        "prompt_tokens": 610,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_time": 1.23,
+        "prompt_tokens_per_sec": 495.93,
+        "completion_tokens": 2,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        },
+        "completion_time": 0.12,
+        "completion_tokens_per_sec": 16.16,
+        "total_tokens": 612,
+        "total_time": 1.36
+      },
+      "elapsed_s": 1.571
+    },
+    {
+      "name": "text_after_stream",
+      "passed": true,
+      "http_status": 200,
+      "content": "12",
+      "stream": true,
+      "done": true,
+      "usage": {
+        "prompt_tokens": 30,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_time": 0.11,
+        "prompt_tokens_per_sec": 272.73,
+        "completion_tokens": 3,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        },
+        "completion_time": 0.18,
+        "completion_tokens_per_sec": 16.31,
+        "total_tokens": 33,
+        "total_time": 0.3
+      },
+      "elapsed_s": 0.488
+    }
+  ],
+  "shutdown": {
+    "trusted": true,
+    "owned_name_absent": true,
+    "owned_endpoint_absent": true,
+    "other_active_hardware": [
+      "A100"
+    ]
+  }
+}

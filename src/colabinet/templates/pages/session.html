@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon, state_badge, nav_attrs %}
+{% set session = detail.s %}
+{% block title %}{{ session.colab_name }}{% endblock %}
+{% block crumbs %}<a href="/sessions" {{ nav_attrs() }} class="cb-muted">Sessions</a><span class="cb-crumb-sep" aria-hidden="true">{{ icon('chevron-right') }}</span><h1>{{ session.colab_name }}</h1><span id="session-state">{{ state_badge(session.state, session.stop_unconfirmed, session.progress) }}</span>{% endblock %}
+{% block actions %}
+  {% include "partials/session_controls.html" %}
+{% endblock %}
+{% block content %}
+<div id="session-watch" data-session-id="{{ session.id }}" hidden></div>
+<div class="tabs">
+  <nav role="tablist" aria-orientation="horizontal">
+    {% for tab_name, label in [('overview', 'Overview'), ('runs', 'Runs'), ('requests', 'Requests'), ('logs', 'Logs')] %}
+    <a role="tab" href="/sessions/{{ session.id }}?tab={{ tab_name }}" {{ nav_attrs() }} aria-selected="{{ 'true' if tab == tab_name else 'false' }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+</div>
+<section id="session-resources" hx-get="/ui/sessions/{{ session.id }}/resources" hx-trigger="every 5s" hx-swap="cb-patch">{% with resources = detail.resources %}{% include "partials/session_resources.html" %}{% endwith %}</section>
+{% if tab == 'overview' %}
+<div id="session-status" class="cb-stack" hx-get="/ui/sessions/{{ session.id }}/status" hx-trigger="every 2s" hx-swap="cb-patch">{% include "partials/session_status.html" %}</div>
+{% elif tab == 'logs' %}
+<section class="card">
+  <header><h2 class="cb-card-title"><span class="cb-card-icon">{{ icon('terminal') }}</span>Session logs</h2>
+    <p>Creation output, latest 500 engine lines and 200 lifecycle events. Pause affects display only, not the runtime.</p>
+    <div class="card-action cb-row">
+      <button class="btn" data-size="sm" data-variant="outline" aria-pressed="false" onclick="cbToggleLogs(this)">Pause</button>
+      <label class="cb-switch"><input id="logs-autoscroll" class="input" type="checkbox" role="switch" checked>Auto-scroll</label>
+      <a class="btn" data-size="sm" data-variant="outline" href="/ui/sessions/{{ session.id }}/logs.txt">{{ icon('download') }}Download</a>
+    </div>
+  </header>
+  <section id="session-logs" class="cb-stack" hx-get="/ui/sessions/{{ session.id }}/logs?after=0&amp;after_event=0" hx-trigger="load, every 2s, refresh" hx-swap="none">
+    <div id="session-creation-log">{% with creation = detail.creation %}{% include "partials/creation_log.html" %}{% endwith %}</div>
+    <div class="cb-grid-2">
+      <div><div class="cb-log-head"><h3>Events</h3></div><ol id="session-log-events" class="cb-feed"></ol></div>
+      <div><div class="cb-log-head"><h3>Engine log</h3></div><pre id="session-log-lines" class="cb-log"></pre></div>
+    </div>
+  </section>
+</section>
+{% else %}
+<section class="card"><section id="session-{{ tab }}" hx-get="/ui/sessions/{{ session.id }}/{{ tab }}" hx-trigger="load, every 5s" hx-swap="cb-patch"><p class="cb-muted">Loading…</p></section></section>
+{% endif %}
+
+<dialog id="reconfigure-dialog" class="dialog" aria-labelledby="reconf-title">
+  <div>
+    <header><span class="cb-dialog-icon" data-tone="info">{{ icon('sliders') }}</span><h2 id="reconf-title">Reconfigure {{ session.colab_name }}</h2><p>Same VM, new run: installs and downloads already on the VM are skipped. The endpoint answers 503 until the new run is ready.</p></header>
+    <section>
+      <form id="reconf-form" class="form cb-form-grid" data-engine="{{ session.run.engine if session.run else 'llamacpp' }}" hx-post="/ui/actions/sessions/{{ session.id }}/reconfigure" hx-swap="none" hx-on::after-request="if (event.detail.successful) this.closest('dialog').close()">
+        <input type="hidden" name="confirm" value="yes">
+        <div class="field cb-span-4"><label class="label" for="rc-preset">Model</label>
+          <select class="select" id="rc-preset" name="preset" onchange="cbReconfigureChanged(this)">
+            <option value="" data-engine="{{ session.run.engine if session.run else 'llamacpp' }}">Keep {{ session.run.alias if session.run else 'the current model' }}</option>
+            {% for preset in presets %}<option value="{{ preset.id }}" data-engine="{{ preset.engine }}">{{ preset.label }}</option>{% endfor %}
+          </select></div>
+        <div class="field cb-span-2"><label class="label" for="rc-ctx">Context</label><input class="input" id="rc-ctx" name="ctx" type="number" placeholder="{{ session.run.ctx if session.run else '' }}"></div>
+        <div class="field cb-span-2"><label class="label" for="rc-kv">KV cache</label><input class="input" id="rc-kv" name="kv" list="rc-kv-types-{{ session.run.engine if session.run else 'llamacpp' }}" placeholder="{{ session.run.kv if session.run else '' }}"><datalist id="rc-kv-types-llamacpp"><option>f16</option><option>q8_0</option><option>q4_0</option></datalist><datalist id="rc-kv-types-exllamav3"><option>FP16</option><option>Q8</option><option>Q6</option><option>Q4</option><option>8,8</option></datalist><datalist id="rc-kv-types-strata"><option>int8</option><option>q4_0</option><option>k8v4</option></datalist></div>
+        <div class="field cb-span-4"><label class="label" for="rc-extra">Extra engine args</label><input class="input cb-mono" id="rc-extra" name="extra_args" placeholder="{{ 'model.chunk_size=4096' if session.run and session.run.engine == 'exllamav3' else '--ple-io direct' if session.run and session.run.engine == 'strata' else '--reasoning-budget 4096' }}"></div>
+        <div class="field cb-span-4" id="rc-projection-field" {% if not session.run or session.run.engine != 'strata' %}hidden{% endif %}>
+          <label class="label" for="rc-projection">Experimental refusal projection (Strata only)</label>
+          <select class="select" id="rc-projection" name="refusal_projection" {% if not session.run or session.run.engine != 'strata' %}disabled{% endif %}><option value="">Keep current setting / new preset default</option><option value="false">Off</option><option value="true">On — experimental</option></select>
+          <p class="cb-muted">{% if session.run and session.run.engine == 'strata' %}Currently {{ 'on' if session.run.refusal_projection else 'off' }}. {% endif %}Reduces refusals and changes model behavior; it does not guarantee an uncensored model. Strata requires GPU, enables GPU vision and serves one sequence at a time.</p>
+        </div>
+      </form>
+    </section>
+    <footer>
+      <button class="btn" data-variant="outline" onclick="this.closest('dialog').close()">Cancel</button>
+      <button class="btn" form="reconf-form" type="submit">Reconfigure</button>
+    </footer>
+  </div>
+</dialog>
+{% endblock %}

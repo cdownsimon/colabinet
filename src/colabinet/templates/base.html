@@ -1,0 +1,103 @@
+{% from "macros.html" import icon, logo, nav_attrs %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="htmx-config" content='{"historyCacheSize":0}'>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Crect x='8' y='7.5' width='16' height='7.5' rx='2' fill='none' stroke='white' stroke-width='2'/%3E%3Crect x='8' y='17' width='16' height='7.5' rx='2' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M14 11.25h4M14 20.75h4' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <title>{% block title %}colabinet{% endblock %} · colabinet</title>
+  <script>
+    try { if ((localStorage.getItem('themeMode') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark') document.documentElement.classList.add('dark'); } catch (_) {}
+  </script>
+  <link rel="stylesheet" href="/static/vendor/basecoat-nova.cdn.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/basecoat.all.min.js" defer></script>
+  <script src="/static/vendor/chart.umd.min.js" defer></script>
+  <script src="/static/vendor/basecoat.chart.min.js" defer></script>
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/navigation.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body hx-history="false" hx-ext="cb-patch" hx-headers='{"X-CSRF-Token": "{{ csrf }}"}' data-csrf="{{ csrf }}">
+<aside class="sidebar" data-side="left" aria-hidden="false" id="sidebar">
+  <nav aria-label="colabinet">
+    <header>
+      <a href="/" {{ nav_attrs() }} class="cb-brand">{{ logo() }}<span><strong>colabinet</strong><small>Colab LLM console</small></span></a>
+    </header>
+    <section class="scrollbar">
+      <div role="group" aria-labelledby="nav-main">
+        <h3 id="nav-main">Console</h3>
+        <ul>
+          <li><a href="/" {{ nav_attrs() }} {% if active == 'overview' %}aria-current="page"{% endif %}>{{ icon('overview') }}<span>Overview</span></a></li>
+          <li><a href="/sessions" {{ nav_attrs() }} {% if active == 'sessions' %}aria-current="page"{% endif %}>{{ icon('sessions') }}<span>Sessions</span><span id="nav-live-count" class="badge cb-nav-badge" title="Live sessions" {% if not base.live_count %}hidden{% endif %}>{{ base.live_count }}</span></a></li>
+          <li><a href="/new" {{ nav_attrs() }} {% if active == 'new' %}aria-current="page"{% endif %}>{{ icon('new') }}<span>New session</span></a></li>
+        </ul>
+      </div>
+      <div role="group" aria-labelledby="nav-use">
+        <h3 id="nav-use">Use</h3>
+        <ul>
+          <li><a href="/playground" {{ nav_attrs() }} {% if active == 'playground' %}aria-current="page"{% endif %}>{{ icon('playground') }}<span>Playground</span></a></li>
+          <li><a href="/metrics" {{ nav_attrs() }} {% if active == 'metrics' %}aria-current="page"{% endif %}>{{ icon('metrics') }}<span>Metrics</span></a></li>
+        </ul>
+      </div>
+      <div role="group" aria-labelledby="nav-conf">
+        <h3 id="nav-conf">Configure</h3>
+        <ul>
+          <li><a href="/models" {{ nav_attrs() }} {% if active == 'models' %}aria-current="page"{% endif %}>{{ icon('models') }}<span>Models</span></a></li>
+          <li><a href="/settings" {{ nav_attrs() }} {% if active == 'settings' %}aria-current="page"{% endif %}>{{ icon('settings') }}<span>Settings</span></a></li>
+        </ul>
+      </div>
+    </section>
+    <footer>
+      <div id="sidebar-status" hx-get="/ui/sidebar-status" hx-trigger="every 5s" hx-swap="cb-patch">
+        {% include "partials/sidebar_status.html" %}
+      </div>
+      <div class="cb-row cb-sidebar-actions">
+        <button type="button" class="btn cb-stop-all" data-variant="ghost" data-size="sm" onclick="document.getElementById('stop-all-dialog').showModal()" title="Stop every live session">{{ icon('stop') }}Stop all sessions</button>
+      </div>
+    </footer>
+  </nav>
+</aside>
+<main id="cb-view" class="cb-main" hx-history-elt hx-sync="this:replace" hx-disinherit="hx-sync">
+  <header class="cb-topbar">
+    <button type="button" class="btn" data-variant="ghost" data-size="icon" onclick="document.getElementById('sidebar').toggle()" aria-label="Toggle sidebar" title="Toggle sidebar">{{ icon('menu') }}</button>
+    <div class="cb-crumbs">{% block crumbs %}{% endblock %}</div>
+    <div class="cb-top-actions">
+      {% block actions %}{% endblock %}
+      <button type="button" class="btn cb-search-trigger" data-variant="outline" data-size="sm" onclick="document.getElementById('cmdk').showModal()" aria-label="Search">{{ icon('search') }}<span class="cb-hide-sm">Search or jump to…</span><kbd class="kbd">⌘K</kbd></button>
+      <button type="button" class="btn cb-theme-toggle" data-variant="ghost" data-size="icon" onclick="basecoat.theme.toggle()" aria-label="Toggle dark mode" title="Toggle dark mode"><span class="cb-when-light">{{ icon('moon') }}</span><span class="cb-when-dark">{{ icon('sun') }}</span></button>
+    </div>
+  </header>
+  <div class="cb-page" data-page="{{ active }}" data-live-count="{{ base.live_count }}">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+<div id="cb-loading" class="cb-loading" role="status" aria-live="polite" hidden><span class="cb-visually-hidden">Loading page…</span></div>
+
+{% include "partials/cmdk.html" %}
+
+<dialog id="stop-all-dialog" class="dialog" aria-labelledby="stop-all-title">
+  <div>
+    <header><span class="cb-dialog-icon">{{ icon('stop') }}</span><h2 id="stop-all-title">Stop every live session?</h2><p>colabinet stops each managed session by name and confirms it with <code>colab sessions</code>. Their VMs are deleted.</p></header>
+    <footer>
+      <button class="btn" data-variant="outline" onclick="this.closest('dialog').close()">Cancel</button>
+      <button class="btn" data-variant="destructive" hx-post="/ui/actions/stop-all" hx-vals='{"confirm":"yes"}' hx-swap="none" onclick="this.closest('dialog').close()">Stop all</button>
+    </footer>
+  </div>
+</dialog>
+
+<dialog id="stop-dialog" class="dialog" aria-labelledby="stop-title">
+  <div>
+    <header><span class="cb-dialog-icon">{{ icon('stop') }}</span><h2 id="stop-title">Stop <span id="stop-name"></span>?</h2><p>The VM is deleted; its bill closes once Colab confirms the stop.</p></header>
+    <footer>
+      <button class="btn" data-variant="outline" onclick="this.closest('dialog').close()">Cancel</button>
+      <button class="btn" data-variant="destructive" id="stop-confirm" hx-vals='{"confirm":"yes"}' hx-swap="none" onclick="this.closest('dialog').close()">Stop</button>
+    </footer>
+  </div>
+</dialog>
+
+<div id="toaster" class="toaster" data-align="end"></div>
+{% block scripts %}{% endblock %}
+</body>
+</html>
