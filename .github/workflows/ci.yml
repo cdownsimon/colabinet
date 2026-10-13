@@ -14,8 +14,8 @@ concurrency:
 
 jobs:
   test:
-    # macOS is the supported host; its runner image also has the Chrome and Node the browser tests use.
-    runs-on: macos-latest
+    # Linux runners are plentiful (macOS ones queue for long); the image has the Chrome and Node the browser tests use.
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4

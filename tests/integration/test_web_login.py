@@ -448,6 +448,8 @@ async def test_failed_reauthentication_token_replace_restores_previous_credentia
     assert not list(sup.cli.profile.glob("*.backup"))
 
 
+@pytest.mark.skipif(hasattr(os, "geteuid") and os.geteuid() == 0,
+                    reason="root ignores the read-only directory this test uses to make cleanup fail")
 async def test_candidate_cleanup_failure_cannot_leave_account_change_pending(login_console):
     app, client, *_, sup = login_console
     await connect(client)

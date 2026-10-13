@@ -1,5 +1,6 @@
 """Every console page and partial renders against a seeded world; actions need the CSRF token."""
 
+import asyncio
 import html
 import json
 import re
@@ -194,7 +195,12 @@ async def test_playground_relays_through_the_proxy(console):
     body = {"session_id": sid, "prompt": "hi", "stream": False, "max_tokens": 5}
     response = await client.post("/ui/playground/send", json=body, headers=headers)
     assert response.status_code == 200 and response.json()["status"] == 200
-    rows = await world.store.db.fetchall("SELECT client FROM requests WHERE client = 'colabinet-playground'")
+    # The proxy records the request just after relaying the last byte, so the row can land a moment later.
+    for _ in range(50):
+        rows = await world.store.db.fetchall("SELECT client FROM requests WHERE client = 'colabinet-playground'")
+        if rows:
+            break
+        await asyncio.sleep(0.05)
     assert rows
     response = await client.get(f"/ui/playground/models?session_id={sid}")
     assert response.json()["body"]["data"][0]["id"]
