@@ -16,7 +16,7 @@ jobs:
   test:
     # Linux runners are plentiful (macOS ones queue for long); the image has the Chrome and Node the browser tests use.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -25,4 +25,4 @@ jobs:
       - name: Lint
         run: uv run --frozen ruff check src tests scripts
       - name: Test
-        run: uv run --frozen pytest -q
+        run: uv run --frozen pytest -v --durations=15

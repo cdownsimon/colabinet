@@ -1,5 +1,7 @@
 import json
+import os
 import shutil
+import signal
 import subprocess
 from pathlib import Path
 
@@ -33,7 +35,14 @@ def run_browser(tmp_path, page, script):
         page = fixture.as_uri()
     source = tmp_path / "browser-test.cjs"
     source.write_text(script)
-    result = subprocess.run([node, str(FAKES / "browser.cjs"), chrome, page, str(tmp_path / "chrome"), str(source)],
-                            capture_output=True, text=True, timeout=75)
-    assert result.returncode == 0, result.stderr
-    return json.loads(result.stdout)
+    # Own process group, so a timeout also ends the Chrome that Node started and the test fails instead of hanging.
+    process = subprocess.Popen([node, str(FAKES / "browser.cjs"), chrome, page, str(tmp_path / "chrome"), str(source)],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=75)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        stdout, stderr = process.communicate()
+        pytest.fail(f"browser test timed out after 75 s: {stderr[-2000:]}")
+    assert process.returncode == 0, stderr
+    return json.loads(stdout)

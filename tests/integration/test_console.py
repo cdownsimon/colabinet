@@ -189,19 +189,23 @@ async def test_gpu_checkboxes_save_multiple_selections_and_allow_none(console):
     assert re.search(r'name="gpu" value="CPU"[^>]*checked', page)
 
 
+async def playground_rows(world, count):
+    """Playground requests the proxy recorded. It records each just after relaying the last byte, so wait briefly."""
+    for _ in range(50):
+        rows = await world.store.db.fetchall("SELECT client FROM requests WHERE client = 'colabinet-playground'")
+        if len(rows) >= count:
+            break
+        await asyncio.sleep(0.05)
+    return rows
+
+
 async def test_playground_relays_through_the_proxy(console):
     world, client, sid = console
     headers = {"X-CSRF-Token": CSRF}
     body = {"session_id": sid, "prompt": "hi", "stream": False, "max_tokens": 5}
     response = await client.post("/ui/playground/send", json=body, headers=headers)
     assert response.status_code == 200 and response.json()["status"] == 200
-    # The proxy records the request just after relaying the last byte, so the row can land a moment later.
-    for _ in range(50):
-        rows = await world.store.db.fetchall("SELECT client FROM requests WHERE client = 'colabinet-playground'")
-        if rows:
-            break
-        await asyncio.sleep(0.05)
-    assert rows
+    assert await playground_rows(world, 1)
     response = await client.get(f"/ui/playground/models?session_id={sid}")
     assert response.json()["body"]["data"][0]["id"]
 
@@ -299,8 +303,7 @@ async def test_streaming_playground_and_invalid_input(console):
         assert response.status_code == 200 and "data: [DONE]" in response.text
         assert (await client.post(path, json={"session_id": []},
             headers={"X-CSRF-Token": CSRF})).status_code in (409, 422)
-    rows = await world.store.db.fetchall("SELECT client FROM requests WHERE client = 'colabinet-playground'")
-    assert len(rows) == 2
+    assert len(await playground_rows(world, 2)) == 2
 
 
 async def test_empty_pages_selection_and_invalid_estimate(tmp_path):

@@ -40,7 +40,9 @@ def ssh_command(colab_bin: str, name: str, hidden_port: int, vm_port: int, key: 
 
 def cmdline(pid: int) -> str | None:
     try:
-        out = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True, timeout=5)
+        # -ww: no width limit. Linux procps truncates piped output to 80 columns, which would cut the marker off.
+        out = subprocess.run(["ps", "-ww", "-o", "command=", "-p", str(pid)], capture_output=True, text=True,
+                             timeout=5)
     except (OSError, subprocess.TimeoutExpired):
         return None
     return out.stdout.strip() or None
