@@ -45,6 +45,16 @@ OBSERVE_INTERVAL_S = 15.0
 OBSERVE_LEASE_S = 30.0
 
 
+def stop_if_cancelled() -> None:
+    """Raise CancelledError when this task was cancelled but carried on, so a cancelled loop always stops.
+
+    A library can swallow a cancellation: on Python 3.12.3, httpx (through anyio) returned a normal response to a
+    session driver cancelled during its health check, and the driver kept looping, so shutdown waited forever."""
+    task = asyncio.current_task()
+    if task is not None and task.cancelling():
+        raise asyncio.CancelledError
+
+
 class CreateRefused(Exception):
     pass
 
@@ -489,6 +499,7 @@ class Supervisor:
                     "setup_failed": self._waiting, "setting_up": self._setting_up, "reconfiguring": self._setting_up,
                     "tunnelling": self._tunnelling, "ready": self._ready, "engine_down": self._ready}
         while True:
+            stop_if_cancelled()
             row = await self.store.session(sid)
             if row is None or row["state"] not in DRIVEN:
                 return
@@ -515,6 +526,7 @@ class Supervisor:
             return None  # a create from before a restart: the reconcile loop resolves it
         endpoint = None
         while not task.done():
+            stop_if_cancelled()
             await asyncio.wait({task}, timeout=self.s.setup_poll_s)
             if task.done():
                 break
@@ -567,6 +579,7 @@ class Supervisor:
     async def _wait_endpoint(self, sid: int, name: str, limit: float) -> str | None:
         deadline = self.now() + limit
         while True:
+            stop_if_cancelled()
             listing = await self.fresh_listing()
             rt = listing.named(name) if listing.trusted else None
             if rt:
@@ -713,6 +726,7 @@ class Supervisor:
             await self.store.update_run(run["id"], status="started")
         t0 = self.now()
         while True:
+            stop_if_cancelled()
             await asyncio.sleep(self.s.setup_poll_s)
             row = await self.store.session(sid)
             if row["state"] not in ("setting_up", "reconfiguring"):
@@ -1160,6 +1174,7 @@ class Supervisor:
 
     async def _loop(self, fn, every: float, name: str) -> None:
         while True:
+            stop_if_cancelled()
             try:
                 await fn()
             except asyncio.CancelledError:

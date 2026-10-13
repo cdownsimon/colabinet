@@ -41,6 +41,34 @@ async def _count(world, table):
     return (await world.store.db.fetchone(f"SELECT COUNT(*) AS n FROM {table}"))["n"] > 0
 
 
+async def test_a_driver_stops_even_when_a_library_swallows_its_cancellation(world, monkeypatch):
+    sid = await world.sup.create(world.request())
+    await world.wait_state(sid, "ready")
+    await world.sup._cancel_driver(sid)
+    checking, swallow = asyncio.Event(), {"on": True}
+
+    async def health_check_that_swallows_cancellation(row):
+        # What httpx (through anyio) did on Python 3.12.3: the driver was cancelled during its health check, which
+        # then returned normally, and the driver looped on, so shutdown waited for it forever.
+        checking.set()
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            if not swallow["on"]:
+                raise
+        return "ready"
+
+    monkeypatch.setattr(world.sup, "_ready", health_check_that_swallows_cancellation)
+    world.sup._start_driver(sid)
+    driver = world.sup._drivers[sid]
+    await asyncio.wait_for(checking.wait(), 5)
+    driver.cancel()
+    done, _ = await asyncio.wait({driver}, timeout=5)
+    swallow["on"] = False  # without the guard the driver is still looping: let it end, so teardown can finish
+    driver.cancel()
+    assert driver in done, "the session driver kept running after it was cancelled"
+
+
 async def test_proxy_answers_503_while_setting_up(world):
     sid = await world.sup.create(world.request())
     row = await world.store.session(sid)
