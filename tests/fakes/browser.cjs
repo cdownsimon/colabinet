@@ -11,7 +11,8 @@ const pending = new Map();
 async function main() {
   const portFile = `${profile}/DevToolsActivePort`;
   let port;
-  for (let attempt = 0; attempt < 100; attempt++) {
+  // Up to 30 s: a cold first start on a fresh CI machine took over 5 s.
+  for (let attempt = 0; attempt < 600; attempt++) {
     if (fs.existsSync(portFile)) {
       const candidate = Number(fs.readFileSync(portFile, 'utf8').split('\n')[0]);
       if (candidate > 0 && candidate <= 65535) { port = candidate; break; }
