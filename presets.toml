@@ -3,7 +3,7 @@
 # (A100-80 falls back to A100 and T4-HIGHMEM to T4 when missing).
 
 [engines.llamacpp]
-release = "b11273"  # prebuilt llama-<release>-bin-ubuntu-cuda-12.8-x64 (bundles its own cudart)
+release = "b12359"  # prebuilt llama-<release>-bin-ubuntu-cuda-12.8-x64 (bundles its own cudart)
 
 [engines.exllamav3]
 wheel = "1.5.2"

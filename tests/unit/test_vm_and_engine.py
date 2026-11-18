@@ -1,9 +1,12 @@
+import io
 import json
 import re
 import runpy
 import shlex
 import subprocess
 import sys
+import tarfile
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -141,16 +144,106 @@ def test_llama_server_exit_names_an_oom_kill_or_its_last_error(tmp_path, monkeyp
 def test_llamacpp_env_from_preset():
     p = load_presets(REPO_ROOT / "presets.toml")
     spec = RunSpec.from_preset(p.presets["qwen38-27b-abl-q4k"], "L4", p.engines, ctx=65536)
-    assert (spec.kv, spec.ctx, spec.release, spec.mmproj_gpu) == ("q4_0", 65536, "b11273", False)
+    assert (spec.kv, spec.ctx, spec.release, spec.mmproj_gpu) == ("q4_0", 65536, "b12359", False)
     eng = ENGINES["llamacpp"]
     env = eng.setup_env(spec, 8090, run_id=4)
     assert env["SCRIPT"] == "/content/colabinet/setup_llamacpp.py"
     assert env["EVENTS"] == "/content/colabinet/run-4.jsonl" and env["LLM_KV"] == "q4_0"
+    assert env["LLM_RELEASE"] == "b12359"
+    assert eng.setup_env(replace(spec, release=None), 8090, run_id=4)["LLM_RELEASE"] == "b12359"
+    assert eng.setup_env(replace(spec, release="b11273"), 8090, run_id=4)["LLM_RELEASE"] == "b11273"
     assert env["LLM_TEMPLATE"] == "/content/colabinet/templates/qwen38_effort_map.jinja"
     remote = [r for _, r in eng.uploads(spec)]
     assert remote == ["/content/colabinet/setup_llamacpp.py", "/content/colabinet/gguf_files.py",
                       "/content/colabinet/templates/qwen38_effort_map.jinja"]
     assert all(local.exists() for local, _ in eng.uploads(spec))
+
+
+@pytest.fixture
+def llama_archives(tmp_path, monkeypatch):
+    downloads = []
+    events = []
+
+    def download(url, destination):
+        release, filename = url.rsplit("/", 2)[-2:]
+        suffix = f"{release}-bin-ubuntu-cuda-12.8-x64"
+        if filename == f"llama-{suffix}.tar.gz":
+            names = [f"llama-{release}/llama-server", f"llama-{release}/libllama.so"]
+        else:
+            assert filename == f"cudart-llama-{suffix}.tar.gz"
+            names = [f"cudart-llama-{suffix}/libcudart.so.12"]
+        with tarfile.open(destination, "w:gz") as archive:
+            for name in names:
+                data = release.encode()
+                member = tarfile.TarInfo(name)
+                member.size = len(data)
+                archive.addfile(member, io.BytesIO(data))
+        downloads.append(filename)
+
+    monkeypatch.setattr(setup_llamacpp, "LLAMA_DIR", str(tmp_path))
+    monkeypatch.setattr(setup_llamacpp, "event", lambda kind, **data: events.append((kind, data)))
+    monkeypatch.setattr(setup_llamacpp.urllib.request, "urlretrieve", download)
+    return downloads, events
+
+
+def test_llamacpp_install_and_rollback_select_only_requested_release(tmp_path, llama_archives):
+    downloads, events = llama_archives
+    legacy_binary = tmp_path / "llama-b11273" / "llama-server"
+    legacy_binary.parent.mkdir()
+    legacy_binary.write_text("legacy")
+    (tmp_path / ".installed-b11273").touch()
+
+    for release in ("b11273", "b12359", "b11273"):
+        directory = tmp_path / release
+        server, libraries = setup_llamacpp.install(release)
+        assert Path(server) == directory / f"llama-{release}" / "llama-server"
+        assert Path(server).read_text() == release
+        assert [Path(path) for path in libraries] == [
+            directory / f"cudart-llama-{release}-bin-ubuntu-cuda-12.8-x64", directory / f"llama-{release}",
+        ]
+        for library in directory.rglob("lib*.so*"):
+            assert library.read_text() == release
+
+    assert legacy_binary.read_text() == "legacy"
+    assert len(downloads) == 4
+    assert [(kind, data["release"], data["skipped"]) for kind, data in events] == [
+        ("install_done", "b11273", False),
+        ("install_done", "b12359", False),
+        ("install_done", "b11273", True),
+    ]
+
+
+def test_llamacpp_interrupted_install_can_retry(tmp_path, llama_archives, monkeypatch):
+    downloads, events = llama_archives
+    setup_llamacpp.install("b11273")
+    target = tmp_path / "b12359"
+    staging = tmp_path / ".b12359.partial"
+    # Model a previous VM process dying before it could clean up.
+    staging.mkdir()
+    (staging / "llama-server").write_text("incomplete")
+    download = setup_llamacpp.urllib.request.urlretrieve
+
+    def interrupt_runtime_download(url, destination):
+        if "/cudart-" in url:
+            assert not target.exists()
+            destination.write_bytes(b"partial archive")
+            raise InterruptedError("download interrupted")
+        download(url, destination)
+
+    with monkeypatch.context() as interrupted:
+        interrupted.setattr(setup_llamacpp.urllib.request, "urlretrieve", interrupt_runtime_download)
+        with pytest.raises(InterruptedError, match="download interrupted"):
+            setup_llamacpp.install("b12359")
+    assert not target.exists()
+    assert not staging.exists()
+    assert [data["release"] for _, data in events] == ["b11273"]
+
+    server, _ = setup_llamacpp.install("b12359")
+    assert Path(server).read_text() == "b12359" and len(downloads) == 5
+    assert not staging.exists()
+    assert not list(target.rglob("*.tar.gz"))
+    old_server, _ = setup_llamacpp.install("b11273")
+    assert Path(old_server).read_text() == "b11273" and events[-1][1]["skipped"]
 
 
 def test_split_download_fetches_missing_companions_when_first_shard_exists(tmp_path, monkeypatch):

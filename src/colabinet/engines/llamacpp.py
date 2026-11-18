@@ -26,7 +26,7 @@ class LlamaCppEngine:
             "OUT": f"{VM_ROOT}/setup.out",
             "EVENTS": f"{VM_ROOT}/run-{run_id}.jsonl",
             "ENGINE_LOG": f"{VM_ROOT}/engine.log",
-            "LLM_RELEASE": spec.release or "b11273",
+            "LLM_RELEASE": spec.release or "b12359",
             "LLM_REPO": spec.repo,
             "LLM_FILE": spec.file or "",
             "LLM_PORT": str(vm_port),

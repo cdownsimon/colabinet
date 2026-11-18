@@ -1,10 +1,12 @@
 # Runs ON the Colab VM, started detached by bg.py.
 # Idempotent: skips the install and downloads that are already present, stops all three engines first (so a
 # reconfigure can switch engines), then starts llama-server and waits for /health. Progress goes to $EVENTS.
+import fcntl
 import json
 import os
 import re
 import shlex
+import shutil
 import socket
 import subprocess
 import sys
@@ -12,6 +14,7 @@ import tarfile
 import threading
 import time
 import urllib.request
+from pathlib import Path
 from urllib.parse import quote
 
 from gguf_files import gguf_files
@@ -83,25 +86,52 @@ def stop_engines(port):
     return False
 
 
+def installed_paths(directory):
+    servers = [path for path in directory.rglob("llama-server") if path.is_file()]
+    libraries = [path for path in directory.rglob("lib*.so*") if path.is_file()]
+    if len(servers) != 1 or not any(path.name.startswith("libcudart.so") for path in libraries):
+        return None
+    return servers[0].relative_to(directory), sorted({path.parent.relative_to(directory) for path in libraries})
+
+
 def install(release):
-    base = f"https://github.com/ggml-org/llama.cpp/releases/download/{release}/"
-    suffix = f"{release}-bin-ubuntu-cuda-12.8-x64.tar.gz"
-    names = [f"llama-{suffix}", f"cudart-llama-{suffix}"]
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", release):
+        raise ValueError(f"invalid llama.cpp release: {release!r}")
     t = time.time()
-    marker = os.path.join(LLAMA_DIR, f".installed-{release}")
-    skipped = os.path.exists(marker)
-    if not skipped:
-        os.makedirs(LLAMA_DIR, exist_ok=True)
-        for name in names:
-            path = os.path.join(LLAMA_DIR, name)
-            urllib.request.urlretrieve(base + name, path)
-            with tarfile.open(path) as tf:
-                tf.extractall(LLAMA_DIR)
-        open(marker, "w").close()
-    server = sh(f"find {LLAMA_DIR} -name llama-server -type f | head -1")[1].strip()
-    libs = sorted({os.path.dirname(p) for p in sh(f"find {LLAMA_DIR} -name 'lib*.so*'")[1].split()})
+    root = Path(LLAMA_DIR)
+    root.mkdir(parents=True, exist_ok=True)
+    directory = root / release
+    staging = root / f".{release}.partial"
+    with (root / f".{release}.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        paths = installed_paths(directory)
+        skipped = paths is not None
+        if paths is None:
+            # A killed setup may leave partial files. Publish only after both archives are extracted.
+            if staging.exists():
+                shutil.rmtree(staging)
+            staging.mkdir()
+            try:
+                base = f"https://github.com/ggml-org/llama.cpp/releases/download/{release}/"
+                suffix = f"{release}-bin-ubuntu-cuda-12.8-x64.tar.gz"
+                for name in (f"llama-{suffix}", f"cudart-llama-{suffix}"):
+                    path = staging / name
+                    urllib.request.urlretrieve(base + name, path)
+                    with tarfile.open(path) as archive:
+                        archive.extractall(staging, filter="data")
+                    path.unlink()
+                paths = installed_paths(staging)
+                if paths is None:
+                    raise RuntimeError(f"llama.cpp {release} archives did not provide llama-server and CUDA libraries")
+                if directory.exists():
+                    shutil.rmtree(directory)
+                staging.rename(directory)
+            finally:
+                if staging.exists():
+                    shutil.rmtree(staging)
+    server, libs = paths
     event("install_done", engine="llamacpp", release=release, seconds=round(time.time() - t, 1), skipped=skipped)
-    return server, libs
+    return str(directory / server), [str(directory / lib) for lib in libs]
 
 
 def dir_bytes(path):
