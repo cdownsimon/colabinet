@@ -10,8 +10,8 @@ from pathlib import Path
 from ..config import PACKAGE_DIR
 from .base import VM_DIR, VM_ROOT, RunSpec
 
-TABBY_COMMIT = "be74bf0a00bcb3a518e6feb7606f150c189be637"
-WHEEL = "1.5.2"
+TABBY_COMMIT = "47281587fafbd69e50aaf77c7626f390811126b6"
+WHEEL = "1.6.7"
 
 
 class ExLlamaV3Engine:
