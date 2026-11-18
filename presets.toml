@@ -6,8 +6,8 @@
 release = "b11273"  # prebuilt llama-<release>-bin-ubuntu-cuda-12.8-x64 (bundles its own cudart)
 
 [engines.exllamav3]
-wheel = "1.5.2"
-tabbyapi_commit = "be74bf0a00bcb3a518e6feb7606f150c189be637"
+wheel = "1.6.7"
+tabbyapi_commit = "47281587fafbd69e50aaf77c7626f390811126b6"
 
 [engines.strata]
 release = "d6708a4aae15b4860000d54c8af9e84d684bce09"  # engine 0.1.29, measured on Colab L4 and A100 40GB
