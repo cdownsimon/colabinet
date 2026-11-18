@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import json
 import os
 import re
@@ -14,6 +8,7 @@ import sys
 import threading
 import time
 import urllib.request
+from pathlib import Path
 
 env_get = os.environ.get
 ROOT = env_get("COLABINET_ROOT", "/content/colabinet")
@@ -23,6 +18,11 @@ TABBY_DIR = env_get("TABBY_DIR", "/content/tabbyAPI")
 TABBY_GIT = "https://github.com/theroyallab/tabbyAPI"
 WHEEL_URL = ("https://github.com/turboderp-org/exllamav3/releases/download/v{version}/"
              "exllamav3-{version}%2B{cuda}.torch{torch}-{py}-{py}-linux_x86_64.whl")
+PY_TAG = f"cp{sys.version_info.major}{sys.version_info.minor}"
+VENV = Path(ROOT) / f"exllamav3-venv-{PY_TAG}"
+DEFAULT_TORCH = "2.11.0+cu128"
+# ExLlamaV3's CUDA 13.2 extension is built against PyTorch's CUDA 13.0 distribution.
+WHEEL_CUDA = {"2.11.0+cu128": "cu128", "2.11.0+cu130": "cu132"}
 T0 = time.time()
 
 
@@ -34,20 +34,18 @@ def event(kind, **kw):
 
 
 def sh(cmd, cwd=None, env=None, timeout=None):
-    preset = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd, env=env, timeout=timeout)
+    preset = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, env=env, timeout=timeout)
     return preset.returncode, preset.stdout + preset.stderr
 
 
 def wheel_url(version, torch_version, py_tag):
     """The exllamav3 release wheel for this torch ("2.11.0+cu128") and Python ("cp313"), or an error message."""
-    if "+" not in torch_version:
-        return None, f"torch {torch_version} has no CUDA tag: an exllamav3 wheel needs a CUDA build of torch"
-    base, cuda = torch_version.split("+", 1)
-    if not cuda.startswith("cu"):
-        return None, f"torch {torch_version} is not a CUDA build"
-    if (version, base, cuda) == ("1.5.2", "2.11.0", "cu130"):
-        cuda = "cu132"
-    return WHEEL_URL.format(version=version, cuda=cuda, torch=base, py=py_tag), None
+    if torch_version not in WHEEL_CUDA:
+        return None, f"no known exllamav3 wheel pairing for torch {torch_version} (supported: {', '.join(WHEEL_CUDA)})"
+    if py_tag not in {"cp312", "cp313", "cp314"}:
+        return None, f"no known exllamav3 wheel for torch {torch_version} and {py_tag}"
+    return WHEEL_URL.format(version=version, cuda=WHEEL_CUDA[torch_version],
+                            torch=torch_version.split("+")[0], py=py_tag), None
 
 
 def model_dir_name(repo, revision):
@@ -135,43 +133,68 @@ def stop_engines(port):
     return False
 
 
+def private_env():
+    env = dict(os.environ)
+    # Colab can inject its site-packages into otherwise isolated interpreters.
+    env.pop("PYTHONPATH", None)
+    env.pop("PYTHONHOME", None)
+    env.update(VIRTUAL_ENV=str(VENV), PATH=f"{VENV / 'bin'}:{env['PATH']}")
+    return env
+
+
 def install(env):
     commit, version = env["EXL_TABBY_COMMIT"], env["EXL_WHEEL"]
-    marker = os.path.join(TABBY_DIR, f".installed-{commit[:12]}-{version}")
-    cursor = time.time()
-    if os.path.exists(marker):
-        event("install_done", engine="exllamav3", release=f"{version}+{commit[:7]}", seconds=0, skipped=True)
-        return
-    rc, torch_version = sh(f"{sys.executable} -c 'import torch; print(torch.__version__)'")
-    torch_version = torch_version.strip().splitlines()[-1] if rc == 0 else ""
-    py_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
-    url, err = wheel_url(version, torch_version, py_tag)
+    torch_version = env.get("EXL_TORCH", DEFAULT_TORCH)
+    url, err = wheel_url(version, torch_version, PY_TAG)
     if err:
         raise RuntimeError(err)
-    if not os.path.isdir(os.path.join(TABBY_DIR, ".git")):
-        rc, out = sh(f"git clone -q {TABBY_GIT} {TABBY_DIR}")
+    started = time.time()
+    python = str(VENV / "bin/python")
+    marker = VENV / ".installed"
+    identity = f"{commit} {version} {torch_version} {PY_TAG}"
+    wheel_version = f"{version}+{WHEEL_CUDA[torch_version]}.torch{torch_version.split('+')[0]}"
+    probe = [python, "-c", """
+import sys
+from importlib.metadata import version
+import torch
+import exllamav3_ext
+import exllamav3
+
+actual = [torch.__version__, version("exllamav3")]
+if actual != sys.argv[1:]:
+    sys.exit(f"expected {sys.argv[1:]}, got {actual}")
+""", torch_version, wheel_version]
+
+    def run(args, action, cwd=None):
+        rc, out = sh(args, cwd=cwd, env=env)
         if rc:
-            raise RuntimeError(f"git clone failed: {out[-300:]}")
-    rc, out = sh(f"git fetch -q origin {commit} && git checkout -q {commit}", cwd=TABBY_DIR)
-    if rc:
-        raise RuntimeError(f"git checkout {commit} failed: {out[-300:]}")
-    constraints = os.path.join(ROOT, "torch-constraint.txt")
-    with open(constraints, "w") as filters:
-        filters.write(f"torch=={torch_version}\n")
-    pip = f"{sys.executable} -m pip install -q -c {constraints}"
-    rc, out = sh(f"{pip} {TABBY_DIR}")
-    if rc:
-        raise RuntimeError(f"installing TabbyAPI failed: {out[-500:]}")
-    rc, out = sh(f"{pip} '{url}'")
-    if rc:
-        raise RuntimeError(f"no usable exllamav3 {version} wheel for torch {torch_version} / {py_tag}: {out[-400:]}")
-    rc, out = sh(f"{sys.executable} -c 'import importlib.metadata; import exllamav3, exllamav3_ext; "
-                 'print(importlib.metadata.version("exllamav3"))\'')
-    if rc:
-        raise RuntimeError(f"exllamav3 does not import: {out[-400:]}")
-    open(marker, "w").close()
-    event("install_done", engine="exllamav3", release=f"{version}+{commit[:7]}", seconds=round(time.time() - cursor, 1),
-          skipped=False, torch=torch_version)
+            raise RuntimeError(f"{action} failed: {out[-500:]}")
+
+    skipped = False
+    if marker.is_file() and marker.read_text() == identity and os.path.isfile(python) and os.path.isdir(TABBY_DIR):
+        rc, head = sh(["git", "rev-parse", "HEAD"], cwd=TABBY_DIR, env=env)
+        if rc == 0 and head.strip() == commit:
+            skipped = sh(probe, env=env)[0] == 0
+    if not skipped:
+        marker.unlink(missing_ok=True)
+        if not os.path.isfile(python):
+            # Colab does not ship ensurepip. Bootstrap pip directly into the new interpreter.
+            run([sys.executable, "-m", "venv", "--without-pip", str(VENV)], "creating the ExLlamaV3 venv")
+        if sh([python, "-m", "pip", "--version"], env=env)[0]:
+            run([sys.executable, "-m", "pip", "--isolated", "--python", python, "install", "pip"], "bootstrapping pip")
+        if not os.path.isdir(os.path.join(TABBY_DIR, ".git")):
+            run(["git", "clone", "-q", TABBY_GIT, TABBY_DIR], "cloning TabbyAPI")
+        run(["git", "fetch", "-q", "origin", commit], f"fetching TabbyAPI {commit}", cwd=TABBY_DIR)
+        run(["git", "checkout", "-q", "--detach", commit], f"checking out TabbyAPI {commit}", cwd=TABBY_DIR)
+        pip = [python, "-m", "pip", "--isolated", "install", "-q", "--no-cache-dir"]
+        torch_pin = f"torch=={torch_version}"
+        index = "https://download.pytorch.org/whl/" + torch_version.split("+")[1]
+        run([*pip, "--index-url", index, torch_pin], f"installing {torch_pin}")
+        run([*pip, torch_pin, url, TABBY_DIR], f"installing TabbyAPI and exllamav3 {version} for {torch_pin}/{PY_TAG}")
+        run(probe, "verifying private torch and exllamav3")
+        marker.write_text(identity)
+    event("install_done", engine="exllamav3", release=f"{version}+{commit[:7]}", skipped=skipped,
+          seconds=round(time.time() - started, 1), torch=torch_version)
 
 
 def dir_bytes(path):
@@ -185,7 +208,7 @@ def dir_bytes(path):
     return total
 
 
-def download(repo, revision, dest):
+def download(repo, revision, dest, env):
     if os.path.exists(os.path.join(dest, ".complete")):
         event("download_done", file=f"{repo}@{revision}", gb=round(dir_bytes(dest) / 1e9, 2), seconds=0,
               skipped=True)
@@ -200,10 +223,11 @@ def download(repo, revision, dest):
                   mb_s=round(got / (time.time() - cursor) / 1e6, 1))
 
     threading.Thread(target=progress, daemon=True).start()
-    env = {**os.environ, "HF_HUB_DISABLE_XET": "1", "HF_HUB_DISABLE_PROGRESS_BARS": "1"}
+    env = {**env, "HF_HUB_DISABLE_XET": "1", "HF_HUB_DISABLE_PROGRESS_BARS": "1"}
     code = ("import sys; from huggingface_hub import snapshot_download as s; "
             "s(sys.argv[1], revision=sys.argv[2], local_dir=sys.argv[3])")
-    preset = subprocess.run([sys.executable, "-c", code, repo, revision, dest], capture_output=True, text=True, env=env)
+    preset = subprocess.run([VENV / "bin/python", "-c", code, repo, revision, dest],
+                            capture_output=True, text=True, env=env)
     done.set()
     if preset.returncode:
         raise RuntimeError(f"download of {repo}@{revision} failed: {(preset.stdout + preset.stderr)[-500:]}")
@@ -246,16 +270,18 @@ def exit_reason(returncode, log_start):
 
 
 def main():
-    env = dict(os.environ)
+    env = private_env()
     port = env["EXL_PORT"]
-    rc, smi = sh("nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits")
-    rc, versions = sh(f"{sys.executable} -c 'import torch, triton; print(torch.__version__, triton.__version__)'")
+    _, smi = sh(["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader,nounits"])
+    # Keep host versions in diagnostics. Install and launch use the private pair.
+    _, versions = sh([sys.executable, "-c", "from importlib.metadata import version; "
+                      "print(version('torch'), version('triton'))"])
     event("gpu_info", nvidia_smi=smi.strip(), torch=versions.strip()[-120:])
     if not stop_engines(port):
         raise RuntimeError(f"port {port} is still busy after stopping the engines")
     install(env)
     name = model_dir_name(env["EXL_REPO"], env["EXL_REVISION"])
-    download(env["EXL_REPO"], env["EXL_REVISION"], os.path.join(TABBY_DIR, "models", name))
+    download(env["EXL_REPO"], env["EXL_REVISION"], os.path.join(TABBY_DIR, "models", name), env)
     template_name = None
     if env.get("EXL_TEMPLATE") and os.path.exists(env["EXL_TEMPLATE"]):
         template_name = os.path.splitext(os.path.basename(env["EXL_TEMPLATE"]))[0]
@@ -267,7 +293,7 @@ def main():
     cursor = time.time()
 
     log_start = log_size()
-    proc = subprocess.Popen([sys.executable, os.path.join(TABBY_DIR, "main.py")], cwd=TABBY_DIR,
+    proc = subprocess.Popen([VENV / "bin/python", os.path.join(TABBY_DIR, "main.py")], cwd=TABBY_DIR, env=env,
                             stdout=open(ENGINE_LOG, "a"), stderr=subprocess.STDOUT, start_new_session=True)
     while time.time() - cursor < float(env.get("LOAD_TIMEOUT", "900")):
         if proc.poll() is not None:
@@ -284,7 +310,7 @@ def main():
     modalities = read_modalities(port)
     if config["model"]["vision"] and (modalities is None or not modalities["vision"]):
         raise RuntimeError("vision was requested but TabbyAPI did not confirm a loaded vision component via /props")
-    used = sh("nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits")[1].strip()
+    used = sh(["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"])[1].strip()
     event("server_ready", seconds=round(time.time() - cursor, 1), vram_used_mib=int(used) if used.isdigit() else None,
           modalities=modalities, cmd=f"tabbyAPI {name} {env.get('EXL_CACHE_MODE', 'FP16')}")
 

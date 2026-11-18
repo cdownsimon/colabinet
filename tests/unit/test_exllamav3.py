@@ -1,9 +1,7 @@
-import contextlib
-import importlib.metadata
 import importlib.util
 import io
 import json
-import shlex
+import os
 import sys
 from dataclasses import replace
 from types import SimpleNamespace
@@ -21,42 +19,112 @@ sx = importlib.util.module_from_spec(module_spec)
 module_spec.loader.exec_module(sx)
 
 
-def test_install_checks_distribution_version_without_module_attribute(tmp_path, monkeypatch):
-    monkeypatch.setattr(sx, "ROOT", str(tmp_path))
-    monkeypatch.setattr(sx, "TABBY_DIR", str(tmp_path / "tabby"))
-    (tmp_path / "tabby" / ".git").mkdir(parents=True)
-    for name, module in {"torch": SimpleNamespace(__version__="2.11.0+cu130"),
-                         "exllamav3": SimpleNamespace(), "exllamav3_ext": SimpleNamespace()}.items():
-        monkeypatch.setitem(sys.modules, name, module)
-    original_version = importlib.metadata.version
-    monkeypatch.setattr(importlib.metadata, "version",
-                        lambda name: "1.5.2" if name == "exllamav3" else original_version(name))
+COMMIT = "47281587fafbd69e50aaf77c7626f390811126b6"
 
-    def run(command, **kwargs):
-        parts = shlex.split(command)
-        if len(parts) < 3 or parts[1] != "-c":
-            return 0, ""
-        output = io.StringIO()
-        try:
-            with contextlib.redirect_stdout(output):
-                exec(parts[parts.index("-c") + 1], {})
-        except AttributeError as error:
-            return 1, str(error)
-        return 0, output.getvalue()
+
+@pytest.mark.parametrize("version,torch,cuda", [
+    ("1.6.7", "2.11.0+cu128", "cu128"),
+    ("1.6.7", "2.11.0+cu130", "cu132"),
+    ("1.5.2", "2.11.0+cu130", "cu132"),
+])
+def test_wheel_pairings(version, torch, cuda):
+    url, err = sx.wheel_url(version, torch, "cp313")
+    assert err is None
+    assert url == (f"https://github.com/turboderp-org/exllamav3/releases/download/v{version}/"
+                   f"exllamav3-{version}%2B{cuda}.torch2.11.0-cp313-cp313-linux_x86_64.whl")
+
+
+@pytest.mark.parametrize("torch,tag", [("2.14.1+cu130", "cp313"), ("2.11.0+cpu", "cp313"),
+                                       ("2.11.0", "cp313"), ("2.11.0+cu128", "cp315")])
+def test_unsupported_wheel_pairing(torch, tag):
+    url, err = sx.wheel_url("1.6.7", torch, tag)
+    assert url is None and torch in err
+
+
+def test_install_isolated_from_host_and_rechecks_cached_pair(tmp_path, monkeypatch):
+    venv = tmp_path / "private env"
+    tabby = tmp_path / "tabby"
+    (tabby / ".git").mkdir(parents=True)
+    (tabby / f".installed-{COMMIT[:12]}-1.6.7").touch()  # Old host install.
+    host = tmp_path / "host"
+    host.mkdir()
+    (host / "torch.py").write_text("__version__ = '2.14.1+cu130'")
+    monkeypatch.setenv("PYTHONPATH", str(host))
+    monkeypatch.setenv("EXL_TABBY_COMMIT", COMMIT)
+    monkeypatch.setenv("EXL_WHEEL", "1.6.7")
+    monkeypatch.delenv("EXL_TORCH", raising=False)
+    monkeypatch.setattr(sx, "VENV", venv)
+    monkeypatch.setattr(sx, "TABBY_DIR", str(tabby))
+    monkeypatch.setattr(sx, "PY_TAG", "cp313")
+    env = sx.private_env()
+    assert "PYTHONPATH" not in env and env["PATH"].split(os.pathsep)[0] == str(venv / "bin")
+
+    # Use a real private interpreter for the import check. Stub network installs with tiny distributions.
+    site = venv / f"lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+    python = str(venv / "bin/python")
+    version = "1.6.7+cu128.torch2.11.0"
+    calls = []
+    original_sh = sx.sh
+
+    def run(args, **kwargs):
+        calls.append(args)
+        if args[:3] == [sys.executable, "-m", "venv"] or args[:2] == [python, "-c"]:
+            return original_sh(args, **kwargs)
+        if args == ["git", "rev-parse", "HEAD"]:
+            return 0, COMMIT
+        if args == [python, "-m", "pip", "--version"]:
+            return 1, "No module named pip"
+        if args[-1] == str(tabby):
+            (site / "torch.py").write_text("__version__ = '2.11.0+cu128'")
+            (site / "exllamav3_ext.py").touch()
+            (site / "exllamav3.py").touch()  # Distribution metadata is the version authority.
+            metadata = site / "exllamav3-1.6.7+cu128.torch2.11.0.dist-info"
+            metadata.mkdir(exist_ok=True)
+            (metadata / "METADATA").write_text(f"Name: exllamav3\nVersion: {version}\n")
+        return 0, ""
 
     monkeypatch.setattr(sx, "sh", run)
-    recorded = []
-    monkeypatch.setattr(sx, "event", lambda kind, **values: recorded.append((kind, values)))
-    sx.install({"EXL_TABBY_COMMIT": "be74bf0a00bcb3a518e6feb7606f150c189be637", "EXL_WHEEL": "1.5.2"})
-    assert recorded[-1][0] == "install_done"
+    events = []
+    monkeypatch.setattr(sx, "event", lambda kind, **data: events.append((kind, data)))
+    sx.install(env)
+    assert events[-1][0] == "install_done" and events[-1][1]["skipped"] is False
+    assert [sys.executable, "-m", "venv", "--without-pip", str(venv)] in calls
+    assert [sys.executable, "-m", "pip", "--isolated", "--python", python, "install", "pip"] in calls
+    installs = [args for args in calls if args[:3] == [python, "-m", "pip"] and "install" in args]
+    assert len(installs) == 2
+    assert installs[0][-3:] == ["--index-url", "https://download.pytorch.org/whl/cu128", "torch==2.11.0+cu128"]
+    assert installs[1][-3:] == ["torch==2.11.0+cu128", sx.wheel_url("1.6.7", "2.11.0+cu128", "cp313")[0], str(tabby)]
+
+    calls.clear()
+    sx.install(env)
+    assert events[-1][1]["skipped"] is True
+    assert len(calls) == 2 and calls[-1][:2] == [python, "-c"]
+
+    version = "1.6.6+cu128.torch2.11.0"
+    (site / "exllamav3_ext.py").unlink()
+    with pytest.raises(RuntimeError, match="verifying private torch and exllamav3"):
+        sx.install(env)
+    assert not (venv / ".installed").exists()
+    version = "1.6.7+cu128.torch2.11.0"
+    sx.install(env)
+    assert events[-1][1]["skipped"] is False
 
 
-def test_wheel_url_matches_the_vm_torch():
-    url, err = sx.wheel_url("1.5.2", "2.11.0+cu128", "cp313")
-    assert err is None and url == ("https://github.com/turboderp-org/exllamav3/releases/download/v1.5.2/"
-                                   "exllamav3-1.5.2%2Bcu128.torch2.11.0-cp313-cp313-linux_x86_64.whl")
-    assert sx.wheel_url("1.5.2", "2.11.0+cpu", "cp313")[1].endswith("not a CUDA build")
-    assert "no CUDA tag" in sx.wheel_url("1.5.2", "2.11.0", "cp313")[1]
+def test_download_uses_private_interpreter(tmp_path, monkeypatch):
+    monkeypatch.setattr(sx, "VENV", tmp_path / "venv")
+    monkeypatch.setattr(sx, "event", lambda *args, **kwargs: None)
+    monkeypatch.setenv("PYTHONPATH", "/host/site-packages")
+    dest = str(tmp_path / "model")
+
+    def snapshot(args, env, **kwargs):
+        assert args[:2] == [sx.VENV / "bin/python", "-c"]
+        assert args[-3:] == ["org/model", "4bpw", dest]
+        assert env["VIRTUAL_ENV"] == str(sx.VENV) and "PYTHONPATH" not in env
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(sx.subprocess, "run", snapshot)
+    sx.download("org/model", "4bpw", dest, sx.private_env())
+    assert (tmp_path / "model/.complete").exists()
 
 
 def test_render_config():
@@ -74,21 +142,16 @@ def test_model_dir_name():
     assert sx.model_dir_name("turboderp/Qwen3.8-27B-exl3", "4.00bpw") == "Qwen3.8-27B-exl3-4.00bpw"
 
 
-def test_cuda13_torch211_uses_the_documented_cuda132_build():
-    url, error = sx.wheel_url("1.5.2", "2.11.0+cu130", "cp313")
-    assert error is None
-    assert url.endswith("exllamav3-1.5.2%2Bcu132.torch2.11.0-cp313-cp313-linux_x86_64.whl")
-
-
 def test_exl3_preset_env_and_uploads():
     presets = load_presets(REPO_ROOT / "presets.toml")
     spec = RunSpec.from_preset(presets.presets["qwen38-27b-abl-exl3-4bpw"], "L4", presets.engines)
     assert (spec.engine, spec.revision, spec.ctx, spec.kv) == ("exllamav3", "4.00bpw", 65536, "FP16")
-    assert spec.release == "1.5.2@be74bf0a00bcb3a518e6feb7606f150c189be637"
+    assert spec.release == f"1.6.7@{COMMIT}"
     eng = ENGINES["exllamav3"]
     env = eng.setup_env(spec, 8090, run_id=3)
     assert env["SCRIPT"] == "/content/colabinet/setup_exllamav3.py" and env["EXL_REVISION"] == "4.00bpw"
-    assert (env["EXL_WHEEL"], env["EXL_TABBY_COMMIT"][:7]) == ("1.5.2", "be74bf0")
+    assert (env["EXL_WHEEL"], env["EXL_TABBY_COMMIT"]) == ("1.6.7", COMMIT)
+    assert eng.setup_env(replace(spec, release=None), 8090, 3) == env
     assert env["EXL_TEMPLATE"] == "/content/colabinet/templates/qwen38_effort_map.jinja"
     assert eng.inject_usage_option and all(local.exists() for local, _ in eng.uploads(spec))
     assert RunSpec.from_preset(presets.presets["qwen38-27b-abl-exl3-4bpw"], "A100-80", presets.engines).ctx == 262144
@@ -169,7 +232,9 @@ def setup_vm(tmp_path, monkeypatch):
     monkeypatch.setattr(sx, "install", lambda env: None)
     monkeypatch.setattr(sx, "download", lambda *args: None)
 
-    def spawn(*args, **kwargs):
+    def spawn(cmd, **kwargs):
+        assert cmd == [sx.VENV / "bin/python", str(tmp_path / "tabby/main.py")]
+        assert kwargs["env"]["VIRTUAL_ENV"] == str(sx.VENV) and "PYTHONPATH" not in kwargs["env"]
         kwargs["stdout"].close()
         return SimpleNamespace(poll=lambda: None)
 

@@ -10,7 +10,7 @@ from colabinet.presets import PresetError, load_presets
 def test_repo_presets_load():
     p = load_presets(REPO_ROOT / "presets.toml")
     q = p.presets["qwen38-27b-abl-q4k"]
-    assert p.engines["llamacpp"]["release"] == "b11273"
+    assert p.engines["llamacpp"]["release"] == "b12359"
     assert q.defaults_for("L4").kv == "q4_0"
     assert q.defaults_for("A100-80").kv == "f16"
     assert q.defaults_for("T4-HIGHMEM").ctx == 32768  # no T4 entry -> generic defaults

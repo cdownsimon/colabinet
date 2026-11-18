@@ -21,6 +21,12 @@ def test_unknown_kv_and_cpu():
     assert estimate("CPU", 1.0, 2048, "f16").verdict == "cpu"
 
 
+def test_fp8_kv_uses_half_the_fp16_cache_size():
+    f16 = estimate("L4", 16.8, 32768, "f16", 65536)
+    fp8 = estimate("L4", 16.8, 32768, "f8_e4m3", 65536)
+    assert fp8.kv_gb == pytest.approx(f16.kv_gb * 0.5)
+
+
 def test_weights_exceeding_vram_spill_even_with_unknown_kv():
     fit = estimate("A100", 111.33, 8192, "f16")
     assert fit.verdict == "spills" and "offload" in fit.message
