@@ -10,7 +10,7 @@ wheel = "1.6.7"
 tabbyapi_commit = "47281587fafbd69e50aaf77c7626f390811126b6"
 
 [engines.strata]
-release = "d6708a4aae15b4860000d54c8af9e84d684bce09"  # engine 0.1.29, measured on Colab L4 and A100 40GB
+release = "c77572806996349b49995e4f98d41b5294d36a21"  # Strata v0.2.15
 
 [[preset]]
 id = "qwen38-27b-abl-q4k"
@@ -293,6 +293,11 @@ vision = true
 weights_gb = 75.839998528
 licence = "Qwen Community License 1.0 (base model; review quant publisher metadata)"
 parallel = 1
+
+[preset.gpu.T4-HIGHMEM]
+ctx = 32768
+kv = "int8"
+extra_args = ["--low-ram", "on"]  # Preserve the measured memory-mapped mode under the v0.2.15 auto threshold.
 
 [preset.gpu.L4]
 ctx = 32768

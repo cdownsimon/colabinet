@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from colabinet.alerts import Alerts, NullNotifier
 from colabinet.api import CreateBody, ReconfigureBody
 from colabinet.config import REPO_ROOT, Settings
+from colabinet.engines.strata import LEGACY_RELEASE, RELEASE, StrataEngine
 from colabinet.presets import load_presets
 from colabinet.supervisor import CreateRefused, CreateRequest, Supervisor
 
@@ -144,10 +145,13 @@ def test_json_projection_requires_real_boolean_or_null(body_class, base, value):
         body_class(**base, refusal_projection=value)
 
 
-@pytest.mark.parametrize("data", [[], [{"id": "wrong"}], [{"id": ""}], [None], None])
+@pytest.mark.parametrize("data", [[], [{"id": "wrong"}], [{"id": ""}], [None], None, "unloaded"])
 async def test_frontend_health_without_loaded_model_is_not_tunnel_ready(supervisor, data):
     sid = await seed_run(supervisor)
     row = await supervisor.store.session(sid)
+    if data == "unloaded":
+        alias = (await supervisor.store.current_run(sid))["alias"]
+        data = [{"id": alias, "status": {"value": "unloaded"}}]
     def respond(request):
         return httpx.Response(200, json={"status": "ok"} if request.url.path == "/health" else {"data": data})
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http:
@@ -180,7 +184,7 @@ async def test_native_death_drives_ready_session_to_engine_down(supervisor, monk
     assert any(alert.kind == "engine_down" for alert in supervisor.alerts.list())
 
 
-@pytest.mark.parametrize("loaded", [True, False])
+@pytest.mark.parametrize("loaded", [True, False, "unloaded"])
 def test_vm_status_distinguishes_live_native_engine_from_frontend(tmp_path, monkeypatch, loaded):
     import io
     import urllib.request
@@ -190,12 +194,13 @@ def test_vm_status_distinguishes_live_native_engine_from_frontend(tmp_path, monk
         status = 200
     def urlopen(url, **kwargs):
         payload = {"status": "ok"} if url.endswith("/health") else {
-            "data": [{"id": "expected"}] if loaded else []}
+            "data": [{"id": "expected", "status": {"value": loaded if isinstance(loaded, str) else "loaded"}}]
+            if loaded else []}
         return Reply(json.dumps(payload).encode())
     monkeypatch.setattr(urllib.request, "urlopen", urlopen)
     monkeypatch.setenv("ENGINE_KIND", "strata")
     monkeypatch.setenv("ENGINE_MODEL", "expected")
-    assert vm_status(tmp_path, monkeypatch, None)["engine_healthy"] is loaded
+    assert vm_status(tmp_path, monkeypatch, None)["engine_healthy"] is (loaded is True)
 
 
 async def test_retry_keeps_projection_and_does_not_replace_the_run(supervisor, monkeypatch):
@@ -208,6 +213,18 @@ async def test_retry_keeps_projection_and_does_not_replace_the_run(supervisor, m
     assert after["id"] == before["id"] and after["spec_json"] == before["spec_json"]
     assert json.loads(after["spec_json"])["refusal_projection"] is True
     assert after["status"] == "pending"
+
+
+def test_current_presets_and_legacy_run_specs_use_the_new_strata_pin(supervisor):
+    expected = "c77572806996349b49995e4f98d41b5294d36a21"
+    assert supervisor.presets.engines["strata"]["release"] == RELEASE == expected
+    for preset in supervisor.presets.presets.values():
+        if preset.engine == "strata":
+            spec = supervisor._run_spec(request(preset_id=preset.id))
+            assert spec.release == expected
+            env = StrataEngine().setup_env(dataclasses.replace(spec, release=LEGACY_RELEASE), 8090, 1)
+            assert env["STRATA_RELEASE"] == expected
+            assert env["STRATA_DRAFTING"] == "mtp"
 
 
 def test_custom_strata_toml_round_trips_file_and_gpu_vision(supervisor, tmp_path):

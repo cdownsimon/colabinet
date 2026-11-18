@@ -1,9 +1,11 @@
 import builtins
+import hashlib
 import importlib.util
 import io
 import json
 import re
 import signal
+import tarfile
 import threading
 from dataclasses import replace
 from pathlib import Path
@@ -48,6 +50,11 @@ def spec(**changes):
     ({"extra_args": ("--low-ram", "invalid")}, "requires"),
     ({"extra_args": ("--low-ram", "on", "--low-ram", "off")}, "requires"),
     ({"extra_args": ("--low-ram=on",)}, "separate"),
+    ({"extra_args": ("--drafting", "invalid")}, "requires"),
+    ({"extra_args": ("--drafting",)}, "requires"),
+    ({"extra_args": ("--drafting", "off", "--drafting", "auto")}, "requires"),
+    ({"extra_args": ("--drafting=off",)}, "separate"),
+    ({"extra_args": ("--draft-model", "/tmp/other.bin")}, "managed"),
 ])
 def test_unsupported_requests_fail_before_setup(changes, message):
     with pytest.raises(ValueError, match=message):
@@ -59,6 +66,7 @@ def config(vision=True, projection=False, ctx=131072):
         "exe": "/content/colabinet/Strata/engine/strata", "model_name": "upstream-name", "args": [
             "--native", "/models/" + Path(next(iter(FILES))).name,
             "--max-context", str(ctx), "--kv", "int8", "--ple-gguf", "/models/table.gguf",
+            "--mtp", "/models/mtp/rt",
         ],
     }
     if vision:
@@ -107,19 +115,23 @@ def test_projection_switching_rejects_stale_or_wrong_profile():
 
 
 def capabilities(vision=True, projection=False):
-    return ({"status": "ok", "model": "qwen-original", "max_context": 131072, "images": vision},
+    return ({"status": "ok", "model": "qwen-original", "max_context": 131072, "images": vision, "loaded": True},
             {"data": [{"id": "qwen-original", "meta": {"n_ctx": 131072},
+                       "status": {"value": "loaded"},
                        "architecture": {"input_modalities": ["text", "image"] if vision else ["text"]}}]},
-            {"engine": {"kv": "int8", "cvec": "project:4-44" if projection else 0}})
+            {"engine": {"kv": "int8", "cvec": "project:4-44" if projection else 0, "drafting": "mtp"}})
 
 
 @pytest.mark.parametrize("part, edit, message", [
     (0, lambda d: d.update(images=False), "vision"),
     (1, lambda d: d["data"][0]["architecture"].update(input_modalities=["text"]), "vision"),
     (1, lambda d: d.update(data=[]), "loaded model"),  # /health stays 200 after the upstream native process dies.
+    (1, lambda d: d["data"][0].update(status={"value": "unloaded"}), "loaded model"),
+    (0, lambda d: d.update(loaded=False), "loaded model"),
     (0, lambda d: d.update(max_context=65536), "context"),
     (2, lambda d: d["engine"].update(kv="q4_0"), "KV"),
     (2, lambda d: d["engine"].update(cvec="project:4-44"), "projection"),
+    (2, lambda d: d["engine"].update(drafting="off"), "drafting"),
 ])
 def test_readiness_requires_actual_loaded_capabilities(part, edit, message):
     data = list(capabilities())
@@ -164,16 +176,22 @@ def test_reconfigure_clears_only_managed_shared_settings(tmp_path, monkeypatch):
     for shard in (1, 2):
         (model_dir / f"Qwen3.8-Flash-Next-GSQ-RCO-IQ2_XS-0000{shard}-of-00002.gguf").write_bytes(b"gguf")
     path = source / "strata-iq2_xs.json"
-    path.write_text(json.dumps(config(projection=True)))
+    path.write_text("{}")
     sidecar = source / "strata-iq2_xs.shared-settings.json"
     sidecar.write_text('{"experimental_speed_projection":false}')
     unrelated = source / "strata-iq3_s.shared-settings.json"
     unrelated.write_text('{"temperature":0.7}')
     monkeypatch.setattr(vm, "SOURCE", source)
     monkeypatch.setattr(vm, "DATA", data)
-    monkeypatch.setattr(vm, "run", lambda *a, **kw: None)
+    def finalize(cmd, **kwargs):
+        assert not path.exists()
+        assert vm.argument(cmd, "--mtp") == "on"
+        assert vm.argument(cmd, "--low-ram") == "mmap"
+        assert "--build" in cmd
+        path.write_text(json.dumps(config(projection=True)))
+    monkeypatch.setattr(vm, "run", finalize)
     monkeypatch.setattr(vm, "event", lambda *a, **kw: None)
-    vm.finalize_model("python", runtime_env(refusal_projection=True))
+    vm.finalize_model("python", runtime_env(refusal_projection=True), True, "source")
     assert not sidecar.exists()
     assert unrelated.read_text() == '{"temperature":0.7}'
 
@@ -202,13 +220,13 @@ def test_cold_setup_runs_engine_model_and_mtp_concurrently(monkeypatch):
             return result
         return execute
 
-    monkeypatch.setattr(vm, "build_engine", branch("engine", {"seconds": 3.0, "skipped": False}))
+    monkeypatch.setattr(vm, "build_engine", branch("engine", {"seconds": 3.0, "skipped": False, "source": "prebuilt"}))
     monkeypatch.setattr(vm, "prepare_model",
                         branch("model", {"seconds": 2.0, "skipped": False, "gb": 68.0}))
-    monkeypatch.setattr(vm, "prepare_mtp", branch("mtp", {"seconds": 1.0, "skipped": False}))
+    monkeypatch.setattr(vm, "prepare_mtp", branch("mtp", {"seconds": 1.0, "skipped": False, "download_bytes": 10}))
     monkeypatch.setattr(vm, "event", lambda kind, **kw: emitted.append({"event": kind, **kw}))
 
-    result = vm.parallel_setup("python", runtime_env(), False, vm.time.monotonic())
+    result = vm.parallel_setup("python", runtime_env(), False, {}, vm.time.monotonic())
 
     assert set(entered) == {"engine", "model", "mtp"}
     assert set(result) == {"engine", "model", "mtp"}
@@ -221,7 +239,7 @@ def test_parallel_setup_cancels_siblings_and_reports_primary_failure(monkeypatch
     barrier = threading.Barrier(3, timeout=2)
     cancelled = []
 
-    def fail_engine(python, env, cancel):
+    def fail_engine(python, env, gpu, cancel):
         barrier.wait()
         raise RuntimeError("compiler exploded")
 
@@ -240,9 +258,162 @@ def test_parallel_setup_cancels_siblings_and_reports_primary_failure(monkeypatch
     monkeypatch.setattr(vm, "event", lambda *args, **kwargs: None)
 
     with pytest.raises(RuntimeError, match="engine: compiler exploded"):
-        vm.parallel_setup("python", runtime_env(), False, vm.time.monotonic())
+        vm.parallel_setup("python", runtime_env(), False, {}, vm.time.monotonic())
 
     assert set(cancelled) == {"model", "mtp"}
+
+
+@pytest.mark.parametrize(("requested", "selected"), [
+    ("off", "off"), ("dflash2", "dflash2"), ("auto", "dflash2"), ("auto", "mtp"),
+])
+def test_setup_only_prepares_the_resolved_drafter(monkeypatch, requested, selected):
+    calls, events = [], {}
+    env = runtime_env(extra_args=("--drafting", requested, "--low-ram", "on", "--ple-io", "ram"))
+    assert env["STRATA_LOW_RAM"] == "on"
+    assert json.loads(env["STRATA_EXTRA_ARGS"]) == ["--ple-io", "ram"]
+    gpu = {"name": "L4", "arch": "89", "vram_gb": 22.5}
+
+    def choice_of(mode, **kwargs):
+        assert mode == requested
+        assert kwargs["model_name"] == "qwen3.8-flash-next-iq3_s"
+        assert kwargs["archs"] == ["sm_89"]
+        return selected
+
+    def record_mode(mode):
+        def prepare(*args):
+            calls.append(mode)
+            return {"seconds": 1, "skipped": False, "download_bytes": 25}
+        return prepare
+
+    env["STRATA_DRAFTING"] = vm.select_drafting(requested, choice_of, "IQ3_S", gpu, [])
+    monkeypatch.setattr(vm, "build_engine", lambda *a: {"seconds": 1, "skipped": False, "source": "prebuilt"})
+    monkeypatch.setattr(vm, "prepare_model", lambda *a: {"seconds": 1, "skipped": False, "gb": 68})
+    monkeypatch.setattr(vm, "prepare_mtp", record_mode("mtp"))
+    monkeypatch.setattr(vm, "prepare_dflash2", record_mode("dflash2"))
+    monkeypatch.setattr(vm, "event", lambda kind, **kw: events.update({kind: kw}))
+    vm.parallel_setup("python", env, False, gpu, vm.time.monotonic())
+
+    assert calls == ([] if selected == "off" else [selected])
+    assert events["drafting_done"]["mode"] == selected
+    assert events["drafting_done"]["download_bytes"] == (0 if selected == "off" else 25)
+
+
+@pytest.mark.parametrize("drafting", ["off", "dflash2"])
+def test_prebuilt_finalize_leaves_mtp_disabled(tmp_path, monkeypatch, drafting):
+    monkeypatch.setattr(vm, "SOURCE", tmp_path)
+    monkeypatch.setattr(vm, "DATA", tmp_path / "data")
+    monkeypatch.setattr(vm, "event", lambda *a, **kw: None)
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    (engine / "BUILD.json").write_text(json.dumps({"version": vm.ENGINE_VERSION}))
+    env = runtime_env(extra_args=("--drafting", drafting))
+    for shard in vm.model_artifacts(env)[:2]:
+        shard.parent.mkdir(parents=True, exist_ok=True)
+        shard.write_bytes(b"gguf")
+
+    def finalize(cmd, **kwargs):
+        assert vm.argument(cmd, "--mtp") == "off"
+        assert vm.argument(cmd, "--prebuilt") == ""
+        assert "--build" not in cmd
+        assert "S.mtp_corrupt = lambda" in cmd[3]
+        assert "S.pip_cuda_libs = lambda" in cmd[3]
+        cfg = config()
+        start = cfg["args"].index("--mtp")
+        del cfg["args"][start:start + 2]
+        cfg.update(exe=str(engine / "strata"), user_args=["--mtp", "/tmp/stale"])
+        (tmp_path / "strata-iq2_xs.json").write_text(json.dumps(cfg))
+
+    monkeypatch.setattr(vm, "run", finalize)
+    _, cfg = vm.finalize_model("python", env, False, "prebuilt")
+    assert cfg["drafting"] == drafting and cfg["mtp"] is False
+    assert cfg["lib_dirs"] == [str(engine)] and "user_args" not in cfg
+
+
+@pytest.fixture
+def prebuilt_archive(tmp_path, monkeypatch):
+    monkeypatch.setattr(vm, "SOURCE", tmp_path)
+    monkeypatch.setattr(vm.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(vm, "sys", SimpleNamespace(platform="linux"))
+    monkeypatch.setattr(vm, "event", lambda *a, **kw: None)
+    archive = tmp_path / "test-package.tar.gz"
+    with tarfile.open(archive, "w:gz") as package:
+        for name, content in [
+            ("BUILD.json", json.dumps({"version": vm.ENGINE_VERSION}).encode()),
+            ("strata", b"engine"),
+            ("strata-vision", b"vision"),
+            ("libcudart.so.13", b"runtime"),
+        ]:
+            info = tarfile.TarInfo(name)
+            info.size = len(content)
+            info.mode = 0o755
+            package.addfile(info, io.BytesIO(content))
+    monkeypatch.setattr(vm, "ENGINE_SHA256", hashlib.sha256(archive.read_bytes()).hexdigest())
+    return archive
+
+
+def test_prebuilt_verified_and_reused_with_vision(prebuilt_archive, monkeypatch):
+    downloads, probes = [], []
+
+    def run(cmd, **kwargs):
+        if cmd[0] == "curl":
+            downloads.append(cmd[-1])
+            Path(vm.argument(cmd, "--output")).write_bytes(prebuilt_archive.read_bytes())
+        elif cmd[0] == "ldd":
+            folder = Path(kwargs["env"]["LD_LIBRARY_PATH"].split(vm.os.pathsep)[0])
+            assert (folder / "libcudart.so.13").is_file()
+            probes.append(Path(cmd[1]).name)
+        else:
+            assert cmd[1] == "--families"
+            return "qwen4exp"
+        return ""
+
+    monkeypatch.setattr(vm, "run", run)
+    gpu = {"name": "L4", "arch": "89", "driver": "580.82.07"}
+    args = ("python", runtime_env(), gpu, threading.Event())
+    assert vm.build_engine(*args)["source"] == "prebuilt"
+    assert vm.build_engine(*args)["skipped"]
+    assert downloads == [vm.ENGINE_URL]
+    assert probes == ["strata", "strata-vision"] * 2
+    assert (vm.SOURCE / "engine" / "strata").is_file()
+
+
+@pytest.mark.parametrize(("arch", "driver", "attempted"), [
+    ("89", "580.82.07", True), ("80", "580.82.07", False), ("89", "580.64.99", False),
+])
+def test_bad_or_unsupported_prebuilt_falls_back_to_source(prebuilt_archive, monkeypatch, arch, driver, attempted):
+    calls = []
+
+    def run(cmd, **kwargs):
+        calls.append(cmd[0])
+        if cmd[0] == "curl":
+            Path(vm.argument(cmd, "--output")).write_bytes(b"partial archive")
+        else:
+            assert "S.build_engine(S.gpu_info()" in cmd[-1]
+
+    monkeypatch.setattr(vm, "run", run)
+    result = vm.build_engine("python", runtime_env(), {"name": "GPU", "arch": arch, "driver": driver},
+                             threading.Event())
+    assert result["source"] == "source"
+    assert calls == (["curl", "python"] if attempted else ["python"])
+    assert not (vm.SOURCE / "engine").exists()
+    assert not list(vm.SOURCE.glob(".engine-install-*"))
+
+
+def test_cancelled_prebuilt_download_stops_without_building(prebuilt_archive, monkeypatch):
+    cancel = threading.Event()
+
+    def run(cmd, **kwargs):
+        assert cmd[0] == "curl"
+        Path(vm.argument(cmd, "--output")).write_bytes(b"partial archive")
+        cancel.set()
+        raise RuntimeError("cancelled")
+
+    monkeypatch.setattr(vm, "run", run)
+    gpu = {"name": "L4", "arch": "89", "driver": "580.82.07"}
+    with pytest.raises(RuntimeError, match="cancelled"):
+        vm.build_engine("python", runtime_env(), gpu, cancel)
+    assert not (vm.SOURCE / "engine").exists()
+    assert not list(vm.SOURCE.glob(".engine-install-*"))
 
 
 @pytest.mark.parametrize("available, message", [(0, "available host RAM"), (999999, "remain cached")])
@@ -278,7 +449,7 @@ def test_engine_switch_matches_all_serving_processes(process, monkeypatch):
 
 @pytest.mark.parametrize("fault, message", [
     ("cpu_session", "NVIDIA GPU"), ("old_driver", "driver"), ("no_avx2", "AVX2"),
-    ("memory", "cannot fit"), ("context_clamp", "clamp"),
+    ("memory", "cannot fit"), ("context_clamp", "rejects requested context"),
 ])
 def test_hardware_policy_refuses_unsupported_vm_before_large_downloads(monkeypatch, fault, message):
     gpu = {"name": "A100", "vram_gb": 40, "driver": "580"}
@@ -288,12 +459,12 @@ def test_hardware_policy_refuses_unsupported_vm_before_large_downloads(monkeypat
         MIN_DRIVER=580, cpu_info=lambda: ("CPU", fault != "no_avx2", False),
         ram_gb=lambda: 64 if fault == "context_clamp" else 12 if fault == "memory" else 84,
         low_ram_needed=lambda q, ram: ram < 50,
-        low_ram_fits=lambda q, ram, vram: fault != "memory",
+        low_ram_fits=lambda q, ram, vram, mtp: fault != "memory",
         MODELS={"IQ3_S": {"ram_gb": 62, "arena_gb": 50.3}},
     )
     monkeypatch.setattr(vm, "event", lambda *a, **kw: None)
     with pytest.raises(RuntimeError, match=message):
-        vm.check_hardware(policy, "IQ3_S", 262144, "auto")
+        vm.check_hardware(policy, "IQ3_S", 262144, "auto", lambda gpu: "mtp")
 
 
 @pytest.mark.parametrize("mode, ram", [("auto", 52.96), ("on", 12), ("off", 52)])
@@ -303,9 +474,9 @@ def test_explicit_expert_memory_mode_preserves_fit_guards(monkeypatch, mode, ram
         gpu_problem=lambda gpu: None, driver_major=lambda gpu: 580, MIN_DRIVER=580,
         cpu_info=lambda: ("CPU", True, False), ram_gb=lambda: ram,
         low_ram_needed=lambda quant, ram: ram < 52.9,
-        low_ram_fits=lambda quant, ram, vram: ram - 6 + max(0, vram - 5) >= 42.9,
+        low_ram_fits=lambda quant, ram, vram, mtp: ram - 6 + max(0, vram - 5 - mtp) >= 42.9,
         MODELS={"IQ3_XXS": {"ram_gb": 60, "arena_gb": 42.9}},
     )
     monkeypatch.setattr(vm, "event", lambda *args, **kwargs: None)
     with pytest.raises(RuntimeError):
-        vm.check_hardware(policy, "IQ3_XXS", 32768, mode)
+        vm.check_hardware(policy, "IQ3_XXS", 32768, mode, lambda gpu: "mtp")

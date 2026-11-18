@@ -249,19 +249,19 @@ def fit_presentation(engine: str, fit: Fit, preset: Preset | None, gpu: str) -> 
     return {"label": label, "variant": variant, "message": message}
 
 
-# Strata's own hardware policy, from setup.py at the pinned release (d6708a4): host RAM and expert arena, in GiB.
-# Run on each VM before downloading; 2026-10-13 runs on T4, T4-HIGHMEM, L4 and A100s all matched it.
+# Strata v0.2.15: the normal-mode RAM recommendation is in GiB and the expert arena is in decimal GB.
 STRATA_MODELS = {"IQ2_XS": (48, 35.5), "IQ3_XXS": (60, 42.9), "IQ3_S": (62, 50.3)}
 
 
-def strata_policy(quant: str, ram_gib: float, vram_gib: float, low_ram: str = "auto") -> str | None:
+def strata_policy(quant: str, ram_gib: float, vram_gib: float, low_ram: str, drafting: str) -> str | None:
     """Why Strata would refuse this quant on this machine, or None when its policy accepts it."""
     ram_need, arena = STRATA_MODELS[quant]
 
     def low_fits():
-        return ram_gib - 6 + max(0.0, vram_gib - 5) >= arena
+        draft_reserve = 0 if drafting == "off" else 1
+        return ram_gib - 6 + max(0.0, vram_gib - 5 - draft_reserve) >= arena
 
-    low = low_ram == "on" or (low_ram == "auto" and ram_gib < arena + 10)
+    low = low_ram == "on" or (low_ram == "auto" and ram_gib < arena * 1e9 / 2**30 + 10)
     if low and not low_fits():
         return (f"Strata {quant} cannot fit about {ram_gib:.0f} GiB host RAM and {vram_gib:.0f} GiB VRAM under its "
                 "low-RAM policy")
@@ -271,17 +271,18 @@ def strata_policy(quant: str, ram_gib: float, vram_gib: float, low_ram: str = "a
     return None
 
 
-def strata_low_ram(args: tuple[str, ...]) -> str:
+def strata_setup_modes(args: tuple[str, ...]) -> tuple[str, str]:
     try:
         from ..engines.strata import _split_setup_args
-        return _split_setup_args(tuple(args))[0]
+        low_ram, drafting, _ = _split_setup_args(tuple(args))
+        return low_ram, drafting
     except ValueError:
-        return "auto"
+        return "auto", "mtp"
 
 
 def gpu_fit(engine: str, gpu: str, preset: Preset | None, weights_gb: float | None, kv_bytes_per_token: int | None,
             ctx: int, kv: str, host_ram_gb: float | None, strata_quant: str | None = None,
-            low_ram: str = "auto") -> dict[str, Any]:
+            low_ram: str = "auto", drafting: str = "mtp") -> dict[str, Any]:
     """How one model configuration fits one GPU class, and whether the console offers that class for it.
 
     status is "blocked" when the runtime cannot run the model at all (shown as a destructive badge), "ok" when it
@@ -301,7 +302,7 @@ def gpu_fit(engine: str, gpu: str, preset: Preset | None, weights_gb: float | No
                      "message": f"Needs about {need:.0f} GB, but this runtime has about {room:.0f} GB of VRAM "
                                 "and host RAM together; llama.cpp would page weights from disk and crawl"}
     if engine == "strata" and strata_quant in STRATA_MODELS and host_ram_gb and VRAM_GB.get(gpu):
-        refusal = strata_policy(strata_quant, host_ram_gb * 1e9 / 2**30, VRAM_GB[gpu], low_ram)
+        refusal = strata_policy(strata_quant, host_ram_gb * 1e9 / 2**30, VRAM_GB[gpu], low_ram, drafting)
         if refusal:
             shown = {"label": "Not enough RAM", "variant": "destructive", "message": refusal}
     return {"gpu": gpu, "verdict": fit.verdict, "ctx": ctx, "kv": kv, "kv_gb": fit.kv_gb,
@@ -331,7 +332,7 @@ def fit_matrix(preset, host_ram: dict[str, float] | None = None) -> list[dict[st
         detail = preset.defaults_for(gpu)
         row = gpu_fit(preset.engine, gpu, preset, None if strata else preset.weights_gb,
                       None if strata else preset.kv_bytes_per_token_f16, detail.ctx, detail.kv,
-                      (host_ram or {}).get(gpu), strata_quant(preset.file), strata_low_ram(detail.extra_args))
+                      (host_ram or {}).get(gpu), strata_quant(preset.file), *strata_setup_modes(detail.extra_args))
         out.append({**row, "kv_unknown": row["kv_gb"] is None and gpu != "CPU" and not strata})
     return out
 
@@ -359,7 +360,7 @@ def session_fit(engine: str, preset: Preset | None, gpus: list[str], host_ram: d
             None if strata or not preset else preset.kv_bytes_per_token_f16,
             ctx or (defaults.ctx if defaults else 131072 if strata else 32768),
             kv or (defaults.kv if defaults else {"exllamav3": "FP16", "strata": "int8"}.get(engine, "f16")),
-            host_ram.get(gpu), strata_quant(file) if strata else None, strata_low_ram(args))
+            host_ram.get(gpu), strata_quant(file) if strata else None, *strata_setup_modes(args))
     return out
 
 

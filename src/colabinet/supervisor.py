@@ -797,11 +797,14 @@ class Supervisor:
             run = await self.store.current_run(row["id"])
             if run and run["engine"] == "strata":
                 # The Python frontend stays healthy after Strata's native engine dies; only loaded models count.
+                if r.json().get("loaded") is False:
+                    return False
                 models = await self.http.get(f"http://127.0.0.1:{row['hidden_port']}/v1/models", timeout=5)
                 if models.status_code != 200:
                     return False
                 data = models.json().get("data")
                 return isinstance(data, list) and any(isinstance(model, dict) and model.get("id")
+                    and (model.get("status") or {}).get("value") != "unloaded"
                     and (not run["alias"] or model["id"] == run["alias"]) for model in data)
             return True
         except (httpx.HTTPError, ValueError, AttributeError):
