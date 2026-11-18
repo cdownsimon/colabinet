@@ -99,6 +99,8 @@ def healthy(port, engine="", model=""):
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=3) as r:
             if r.status != 200:
                 return False
+            if engine == "strata" and json.load(r).get("loaded") is False:
+                return False
         if engine == "strata":
             # /health covers the frontend, which survives native engine death; require a loaded model too.
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/v1/models", timeout=3) as r:
@@ -106,6 +108,7 @@ def healthy(port, engine="", model=""):
                     return False
                 data = json.load(r).get("data")
             return isinstance(data, list) and any(isinstance(entry, dict) and entry.get("id")
+                and (entry.get("status") or {}).get("value") != "unloaded"
                 and (not model or entry["id"] == model) for entry in data)
         return True
     except Exception:

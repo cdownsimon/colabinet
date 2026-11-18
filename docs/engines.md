@@ -110,38 +110,40 @@ unless it cannot run the model. The Models page shows the same verdicts, plus ea
 
 The three Strata presets use the original
 [ISTA-DASLab GSQ-RCO weights](https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF). Strata is pinned
-to [`d6708a4` (0.1.29)](https://github.com/Niko1221/Strata/tree/d6708a4aae15b4860000d54c8af9e84d684bce09); it
-needs an NVIDIA GPU, an AVX2 host CPU and driver 580+, and serves one sequence at a time.
+to [v0.2.15](https://github.com/Niko1221/Strata/releases/tag/v0.2.15) at `c775728`. It needs an NVIDIA GPU,
+an AVX2 host CPU and driver 580+, and serves one sequence at a time.
 
 - **Host RAM.** Strata keeps experts in host RAM and caches a subset in VRAM, so download size is not required
   VRAM. Upstream's normal-mode guidance is about 48/60/62 GiB of host RAM for IQ2_XS/IQ3_XXS/IQ3_S; smaller
-  allocations use its low-RAM policy where it fits. The IQ3 presets pass `--low-ram on` on L4, where auto mode
-  refuses IQ3_XXS ("requires about 60 GiB host RAM").
+  allocations use its low-RAM policy where it fits. The IQ3 presets pass `--low-ram on` on L4. IQ3_XXS
+  also uses that setting on T4-HIGHMEM to retain the memory-mapped mode used in the earlier benchmark.
 - **Setup selector:** Strata extra args are native engine arguments, except `--low-ram auto|on|off`, which
   colabinet forwards to setup. `auto` is the default; `on` chooses upstream's memory-mapped expert policy while
   keeping its fit check; `off` requires resident-expert headroom. In the CLI, pass it as
   `--extra-arg=--low-ram --extra-arg=on`; in the console, as `--low-ram on`.
+- **Drafting.** Use `--drafting off|dflash2|mtp|auto` in extra args. Colabinet defaults to `mtp`.
+  `off` skips draft downloads, `dflash2` prepares the upstream stock DFlash2 pack, and `auto` follows
+  upstream's hardware and model policy, which can select MTP. Off and DFlash2 skip the roughly 5 GB MTP download.
 - **PLE table I/O:** direct I/O is the safe default. On allocations with ample host RAM, `--ple-io ram` warms
   the shared 28.8 GB lookup table after the model is ready, verifies residency and then publishes the endpoint;
   it is page cache, not locked memory. Avoid `--ple-io mmap` on memory-tight L4 allocations, where a long-prompt
   trial aborted.
-- **Setup** installs shared prerequisites, then runs three branches concurrently: the native engine and CUDA
-  vision helper; the model shards, projector and model pack; and the MTP draft layer. A failed branch cancels
-  the others. Downloads resume, and validated outputs are reused by reconfigure and retry. Allow tens of
-  minutes and enough disk; setup time is billed, and small CU caps can stop it before it is ready.
+- **Setup** prepares the engine, model and selected drafter concurrently. On compatible Linux x86-64 VMs,
+  it verifies and caches the release's CUDA 13 engine and vision package (0.1.60). Unsupported GPUs or a
+  package download or validation failure use a build from the pinned source (0.1.61). A failed setup branch
+  cancels its siblings. Downloads and builds consume CU while the runtime is active.
 - **Monitoring** checks the loaded model too, because upstream `/health` can stay HTTP 200 after the native
   engine dies.
 - **Experimental refusal projection:** off by default. Enable it in New session or Reconfigure, with
   `--refusal-projection` in the CLI, or `refusal_projection: true` in JSON. The
-  [upstream vector documentation](https://github.com/Niko1221/Strata/blob/d6708a4aae15b4860000d54c8af9e84d684bce09/data/experimental-speed-projection/README.md)
+  [upstream vector documentation](https://github.com/Niko1221/Strata/blob/c77572806996349b49995e4f98d41b5294d36a21/data/experimental-speed-projection/README.md)
   describes removing a refusal direction from layers 4–44. It reduces refusals and changes ordinary answers; it
   is not a separate checkpoint or a guarantee of unrestricted output. A request can set
   `"experimental_speed_projection": false` to disable it for that request.
 
 Models and New session show **GPU evidence** for Strata instead of a full-weight VRAM estimate: recorded runs per
 GPU class, from `[preset.evidence.<class>]`. Pairs without a record show **Not benchmarked**, not a known failure.
-Evidence is keyed to the exact class and does not promise that every context, PLE mode or projection setting
-was tested.
+Evidence is keyed to the exact class. The October 2026 Strata measurements used engine 0.1.29.
 
 ```bash
 uv run colabinet ctl create --name strata --gpu A100 \

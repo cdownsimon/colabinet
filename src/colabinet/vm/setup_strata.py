@@ -1,14 +1,18 @@
 # Runs on the Colab VM via bg.py. Upstream owns formats and inference; this script owns parallel setup/lifecycle.
 import ctypes
+import hashlib
 import importlib.util
 import json
 import os
+import platform
 import shlex
 import shutil
 import signal
 import socket
 import subprocess
 import sys
+import tarfile
+import tempfile
 import threading
 import time
 import urllib.request
@@ -17,12 +21,19 @@ from pathlib import Path
 
 E = os.environ.get
 ROOT = Path(E("COLABINET_ROOT", "/content/colabinet"))
-SOURCE = ROOT / "Strata"
+RELEASE = "c77572806996349b49995e4f98d41b5294d36a21"
+SOURCE = ROOT / f"Strata-{RELEASE[:7]}"
 DATA = ROOT / "strata-data"
 EVENTS = E("EVENTS", str(ROOT / "setup.jsonl"))
 ENGINE_LOG = E("ENGINE_LOG", str(ROOT / "engine.log"))
-RELEASE = "d6708a4aae15b4860000d54c8af9e84d684bce09"
 REPO = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
+# v0.2.15's release feed reuses this portable CUDA 13 build from v0.2.14.
+ENGINE_VERSION = "0.1.60"
+ENGINE_URL = ("https://github.com/Niko1221/Strata/releases/download/v0.2.14/"
+              f"strata-engine-{ENGINE_VERSION}-linux-x86_64-cuda-cuda13.tar.gz")
+ENGINE_SHA256 = "a72c194c8f6de96629ed53079b5e344ab81223d45667a53f6a6d79398895aa50"
+ENGINE_ARCHS = {75, 86, 89, 120}
+ENGINE_PACKAGE_MARKER = ".colabinet-package-sha256"
 T0 = time.monotonic()
 STOP_PATTERNS = ("[l]lama-server", "[t]abbyAPI/main.py", "[s]erve/server.py.*--engine strata",
                  "[/]engine/strata([ -]|$)", "[/]engine/strata-vision([ ]|$)")
@@ -140,7 +151,18 @@ def checkout(release):
         run(["git", "checkout", "-q", "--detach", release], cwd=SOURCE)
 
 
-def check_hardware(upstream, quant, ctx, low_ram):
+def select_drafting(requested, choice_of, quant, gpu, args):
+    if requested not in ("auto", "off", "dflash2", "mtp"):
+        raise ValueError("Strata drafting must be auto, off, dflash2 or mtp")
+    selected = choice_of(requested, model_name=f"qwen3.8-flash-next-{quant.lower()}",
+                         family="qwen", backend="cuda", archs=[f"sm_{gpu['arch']}"],
+                         vram_mib=gpu["vram_gb"] * 1024, args=args)
+    if requested == "dflash2" and selected != requested:
+        raise RuntimeError(f"DFlash2 is unavailable for Strata {quant} on {gpu['name']}")
+    return selected
+
+
+def check_hardware(upstream, quant, ctx, low_ram, choose_drafting):
     """Use the pinned upstream's GPU, CPU and low-RAM policies before installing/downloading anything large."""
     gpu = upstream.gpu_info()
     if not gpu:
@@ -154,31 +176,44 @@ def check_hardware(upstream, quant, ctx, low_ram):
     if not avx2:
         raise RuntimeError(f"Strata requires an AVX2 CPU; detected {cpu}")
     ram = upstream.ram_gb()
+    drafting = choose_drafting(gpu)
     if low_ram not in ("auto", "on", "off"):
         raise ValueError("Strata low-RAM mode must be auto, on or off")
     low = low_ram == "on" or (low_ram == "auto" and upstream.low_ram_needed(quant, ram))
-    if low and not upstream.low_ram_fits(quant, ram, gpu["vram_gb"]):
+    if low and not upstream.low_ram_fits(quant, ram, gpu["vram_gb"], mtp=drafting != "off"):
         raise RuntimeError(f"Strata {quant} cannot fit {ram:.1f} GiB host RAM and {gpu['vram_gb']:.1f} GiB VRAM "
                            "under upstream's low-RAM policy")
     if not low and ram < upstream.MODELS[quant]["ram_gb"] - 4:
         raise RuntimeError(f"Strata {quant} requires about {upstream.MODELS[quant]['ram_gb']} GiB host RAM")
     needed = upstream.MODELS[quant]["arena_gb"] + ctx * 13 * 1056 / 1e9 + 24
     if quant in ("IQ3_XXS", "IQ3_S") and ctx > 131072 and ram < needed:
-        raise RuntimeError(f"Strata upstream would clamp requested context {ctx} to 131072 with {ram:.1f} GiB RAM; "
+        raise RuntimeError(f"Strata host RAM guard rejects requested context {ctx} with {ram:.1f} GiB RAM; "
                            f"about {needed:.1f} GiB is required")
     event("gpu_info", nvidia_smi=f"{gpu['name']}, {gpu['vram_gb'] * 1024:.0f}, {gpu['driver']}",
           ram_gb=round(ram, 1), low_ram=low)
-    return low
+    return low, gpu, drafting
 
 
 def prepare(env):
-    """Validate the VM and install only prerequisites shared by the three parallel setup branches."""
+    """Validate the VM and install the prerequisites shared by the setup branches."""
     started = time.monotonic()
     checkout(env["STRATA_RELEASE"])
     module_spec = importlib.util.spec_from_file_location("strata_setup", SOURCE / "setup.py")
     upstream = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(upstream)
-    low_ram = check_hardware(upstream, env["STRATA_QUANT"], int(env["STRATA_CTX"]), env["STRATA_LOW_RAM"])
+    sys.path.insert(0, str(SOURCE))
+    try:
+        module_spec.loader.exec_module(upstream)
+        from strata_control.drafting import choice_of
+    finally:
+        sys.path.pop(0)
+    requested = env["STRATA_DRAFTING"]
+    quant = env["STRATA_QUANT"]
+    args = ["--max-context", env["STRATA_CTX"], "--kv", env["STRATA_KV"],
+            *json.loads(env["STRATA_EXTRA_ARGS"])]
+    low_ram, gpu, drafting = check_hardware(upstream, quant, int(env["STRATA_CTX"]), env["STRATA_LOW_RAM"],
+                                           lambda gpu: select_drafting(requested, choice_of, quant, gpu, args))
+    env["STRATA_DRAFTING"] = drafting
+    event("drafting_selected", requested=requested, selected=drafting)
     check_storage(upstream, env, low_ram)
     python = SOURCE / ".venv" / "bin" / "python"
     if not python.exists():
@@ -193,10 +228,10 @@ def prepare(env):
         finally:
             bootstrap.unlink(missing_ok=True)
     run([str(python), "-u", "-c", "import setup as S; "
-         "S.pip_install(S.PY_PACKAGES, 'python packages'); S.get_llama_cpp()"],
+         "S.pip_install(S.runtime_packages(), 'python packages')"],
         cwd=SOURCE, env=env, timeout=float(env.get("INSTALL_TIMEOUT", "3600")))
     event("setup_prepare_done", seconds=round(time.monotonic() - started, 1), low_ram=low_ram)
-    return str(python), low_ram, started
+    return str(python), low_ram, gpu, started
 
 
 def dir_bytes(path):
@@ -249,15 +284,82 @@ def check_storage(upstream, env, low_ram):
     event("storage_check", free_gb=round(free, 1), needed_gb=round(needed, 1))
 
 
-def build_engine(python, env, cancel):
+def prebuilt_supported(gpu):
+    driver = tuple(int(part) for part in gpu["driver"].split(".")[:2] if part.isdecimal())
+    return (sys.platform == "linux" and platform.machine() == "x86_64"
+            and int(gpu["arch"]) in ENGINE_ARCHS and driver >= (580, 65))
+
+
+def probe_prebuilt(engine, env, cancel):
+    meta = json.loads((engine / "BUILD.json").read_text())
+    if meta.get("version") != ENGINE_VERSION:
+        raise RuntimeError(f"Strata package has unexpected engine version {meta.get('version')}")
+    executables = [engine / "strata"]
+    if env["STRATA_VISION"] == "gpu":
+        executables.append(engine / "strata-vision")
+    libs = os.pathsep.join(filter(None, (str(engine), env.get("LD_LIBRARY_PATH"))))
+    probe_env = {**env, "LD_LIBRARY_PATH": libs}
+    for executable in executables:
+        if not executable.is_file() or not os.access(executable, os.X_OK):
+            raise RuntimeError(f"Strata package is missing executable {executable.name}")
+        output = run(["ldd", str(executable)], env=probe_env, timeout=30, cancel=cancel, label="engine")
+        if "not found" in output:
+            raise RuntimeError(f"Strata package cannot load the libraries for {executable.name}")
+    output = run([str(executables[0]), "--families"], env=probe_env, timeout=30, cancel=cancel, label="engine")
+    if "qwen4exp" not in output:
+        raise RuntimeError("Strata package does not advertise Qwen3.8 Flash-Next support")
+
+
+def install_prebuilt(engine, env, cancel):
+    cached = engine / ENGINE_PACKAGE_MARKER
+    if cached.is_file() and cached.read_text() == ENGINE_SHA256:
+        probe_prebuilt(engine, env, cancel)
+        return True
+    with tempfile.TemporaryDirectory(prefix=".engine-install-", dir=SOURCE) as folder:
+        archive = Path(folder) / "engine.tar.gz"
+        run(["curl", "-fL", "--silent", "--show-error", "--retry", "2", "--connect-timeout", "20",
+             "--output", str(archive), ENGINE_URL],
+            timeout=min(600, float(env.get("INSTALL_TIMEOUT", "3600"))), cancel=cancel, label="engine")
+        with archive.open("rb") as stream:
+            if hashlib.file_digest(stream, "sha256").hexdigest() != ENGINE_SHA256:
+                raise RuntimeError("Strata engine archive failed SHA-256 verification")
+        staged = Path(folder) / "engine"
+        with tarfile.open(archive, "r:gz") as package:
+            for member in package:
+                if cancel.is_set():
+                    raise RuntimeError("Strata package extraction cancelled")
+                package.extract(member, staged, filter="data")
+        probe_prebuilt(staged, env, cancel)
+        (staged / ENGINE_PACKAGE_MARKER).write_text(ENGINE_SHA256)
+        if engine.exists():
+            shutil.rmtree(engine)
+        staged.rename(engine)
+    return False
+
+
+def build_engine(python, env, gpu, cancel):
     started = time.monotonic()
-    stamp = SOURCE / "engine" / "BUILD.json"
+    engine = SOURCE / "engine"
+    stamp = engine / "BUILD.json"
+    if prebuilt_supported(gpu):
+        try:
+            skipped = install_prebuilt(engine, env, cancel)
+            return {"seconds": round(time.monotonic() - started, 1), "skipped": skipped, "source": "prebuilt"}
+        except (OSError, ValueError, RuntimeError, tarfile.TarError) as exc:
+            if cancel.is_set():
+                raise
+            event("engine_prebuilt_fallback", reason=str(exc)[:1000])
+    else:
+        event("engine_prebuilt_fallback", reason=f"CUDA package does not cover {gpu['name']} driver {gpu['driver']}")
+    if (engine / ENGINE_PACKAGE_MARKER).exists():
+        shutil.rmtree(engine)
     before = stamp.stat().st_mtime_ns if stamp.exists() else None
     run([python, "-u", "-c", "import setup as S; "
-         "S.build_engine(S.gpu_info(), " + repr(env["STRATA_VISION"]) + ", True, S.get_llama_cpp())"],
+         "S.build_engine(S.gpu_info(), " + repr(env["STRATA_VISION"]) + ", True, S.llama_override())"],
         cwd=SOURCE, env=env, timeout=float(env.get("INSTALL_TIMEOUT", "3600")), cancel=cancel, label="engine")
     after = stamp.stat().st_mtime_ns if stamp.exists() else None
-    return {"seconds": round(time.monotonic() - started, 1), "skipped": before is not None and before == after}
+    return {"seconds": round(time.monotonic() - started, 1), "skipped": before is not None and before == after,
+            "source": "source"}
 
 
 def prepare_model(python, env, low_ram, cancel):
@@ -326,14 +428,13 @@ for artifact in artifacts:
     if not pack_complete(quant, low_ram):
         temporary = pack.with_name(pack.name + ".parallel-part")
         shutil.rmtree(temporary, ignore_errors=True)
-        pack_env = {**env, "STRATA_GGUF_PY": str(SOURCE / "third_party" / "llama.cpp" / "gguf-py")}
         try:
             run([python, "-u", "tools/iq_pack.py", "--gguf", str(artifacts[0]), "--out", str(temporary)],
-                cwd=SOURCE, env=pack_env, timeout=float(env.get("PACK_TIMEOUT", "3600")),
+                cwd=SOURCE, env=env, timeout=float(env.get("PACK_TIMEOUT", "3600")),
                 cancel=cancel, label="model")
             if low_ram:
                 run([python, "-u", "tools/iq_pack.py", "--gguf", str(artifacts[0]), "--out", str(temporary),
-                     "--experts-bin"], cwd=SOURCE, env=pack_env, timeout=float(env.get("PACK_TIMEOUT", "3600")),
+                    "--experts-bin"], cwd=SOURCE, env=env, timeout=float(env.get("PACK_TIMEOUT", "3600")),
                     cancel=cancel, label="model")
             required = [temporary / "native_experts.txt", temporary / "tokenizer" / "vocab.json"]
             if low_ram:
@@ -355,22 +456,23 @@ def prepare_mtp(python, env, cancel):
     mtp = DATA / "mtp"
     runtime = mtp / "rt"
     if (runtime / "experts.bin").is_file() and (runtime / "experts.bin").stat().st_size > 0:
-        return {"seconds": 0, "skipped": True}
+        return {"seconds": 0, "skipped": True, "download_bytes": 0}
     mtp.mkdir(parents=True, exist_ok=True)
     packed = mtp / "mtp-q2_0.gguf"
     packed_part = mtp / "mtp-q2_0.gguf.parallel-part"
     runtime_part = mtp / "rt.parallel-part"
     packed_part.unlink(missing_ok=True)
     shutil.rmtree(runtime_part, ignore_errors=True)
-    task_env = {**env, "STRATA_GGUF_PY": str(SOURCE / "third_party" / "llama.cpp" / "gguf-py")}
     try:
-        run([python, "-u", "tools/mtp_fetch.py", "fetch", "--out", str(mtp)], cwd=SOURCE, env=task_env,
+        initial = dir_bytes(mtp / "tensors")
+        run([python, "-u", "tools/mtp_fetch.py", "fetch", "--out", str(mtp)], cwd=SOURCE, env=env,
             timeout=float(env.get("MTP_TIMEOUT", "3600")), cancel=cancel, label="mtp")
+        download_bytes = max(0, dir_bytes(mtp / "tensors") - initial)
         run([python, "-u", "tools/mtp_pack.py", "--src", str(mtp), "--experts", "q2_0",
-             "--out", str(packed_part)], cwd=SOURCE, env=task_env,
+             "--out", str(packed_part)], cwd=SOURCE, env=env,
             timeout=float(env.get("MTP_TIMEOUT", "3600")), cancel=cancel, label="mtp")
         run([python, "-u", "tools/mtp_rt.py", "--gguf", str(packed_part), "--out", str(runtime_part)],
-            cwd=SOURCE, env=task_env, timeout=float(env.get("MTP_TIMEOUT", "3600")),
+            cwd=SOURCE, env=env, timeout=float(env.get("MTP_TIMEOUT", "3600")),
             cancel=cancel, label="mtp")
         experts = runtime_part / "experts.bin"
         if not experts.is_file() or experts.stat().st_size == 0:
@@ -382,16 +484,44 @@ def prepare_mtp(python, env, cancel):
         packed_part.unlink(missing_ok=True)
         shutil.rmtree(runtime_part, ignore_errors=True)
         raise
-    return {"seconds": round(time.monotonic() - started, 1), "skipped": False}
+    return {"seconds": round(time.monotonic() - started, 1), "skipped": False, "download_bytes": download_bytes}
 
 
-def parallel_setup(python, env, low_ram, install_started):
-    """Run the three independent cold-setup branches and cancel siblings after the first failure."""
+def prepare_dflash2(python, env, cancel):
+    started = time.monotonic()
+    # ensure() validates the pinned checkpoint and deletes its source files once packed. Count
+    # new payload bytes at the transfer boundary, before the source files are removed.
+    script = """
+import json
+import sys
+from strata_control import drafting, drafting_fetch
+
+download = drafting_fetch.transfer.download
+download_bytes = 0
+
+def record(url, path, **kwargs):
+    global download_bytes
+    before = path.stat().st_size if path.exists() else 0
+    result = download(url, path, **kwargs)
+    download_bytes += max(0, path.stat().st_size - before)
+    return result
+
+skipped = drafting.pack_ready(sys.argv[1])
+drafting_fetch.transfer.download = record
+drafting_fetch.ensure(sys.argv[1])
+print(json.dumps({"skipped": skipped, "download_bytes": download_bytes}))
+"""
+    output = run([python, "-u", "-c", script, str(DATA)], cwd=SOURCE, env=env,
+                 timeout=float(env.get("MTP_TIMEOUT", "3600")), cancel=cancel, label="dflash2")
+    return {**json.loads(output.splitlines()[-1]), "seconds": round(time.monotonic() - started, 1)}
+
+
+def parallel_setup(python, env, low_ram, gpu, install_started):
+    """Run the selected cold-setup branches and cancel siblings after the first failure."""
     started = time.monotonic()
     cancel = threading.Event()
     failures = []
     failure_lock = threading.Lock()
-    event("parallel_setup_start", tasks=["engine", "model", "mtp"])
 
     def execute(name, function):
         task_started = time.monotonic()
@@ -410,12 +540,16 @@ def parallel_setup(python, env, low_ram, install_started):
         event("setup_task_done", task=name, seconds=result["seconds"], skipped=result.get("skipped", False))
         return result
 
+    drafting = env["STRATA_DRAFTING"]
     tasks = {
-        "engine": lambda: build_engine(python, env, cancel),
+        "engine": lambda: build_engine(python, env, gpu, cancel),
         "model": lambda: prepare_model(python, env, low_ram, cancel),
-        "mtp": lambda: prepare_mtp(python, env, cancel),
     }
-    pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="strata-setup")
+    draft_task = {"mtp": prepare_mtp, "dflash2": prepare_dflash2}.get(drafting)
+    if draft_task:
+        tasks[drafting] = lambda: draft_task(python, env, cancel)
+    event("parallel_setup_start", tasks=list(tasks), drafting=drafting)
+    pool = ThreadPoolExecutor(max_workers=len(tasks), thread_name_prefix="strata-setup")
     futures = {pool.submit(execute, name, function): name for name, function in tasks.items()}
     results = {}
     try:
@@ -430,14 +564,16 @@ def parallel_setup(python, env, low_ram, install_started):
     if failures:
         name, exc = failures[0]
         raise RuntimeError(f"parallel Strata setup failed in {name}: {exc}") from exc
-    engine, model, mtp = results["engine"], results["model"], results["mtp"]
+    engine, model = results["engine"], results["model"]
     event("install_done", engine="strata", release=env["STRATA_RELEASE"],
-          seconds=round(engine["finished_at"] - install_started, 1), skipped=engine["skipped"])
+          seconds=round(engine["finished_at"] - install_started, 1), skipped=engine["skipped"], source=engine["source"])
     event("download_done", file=env["STRATA_FILE"], gb=model["gb"], seconds=model["seconds"],
           skipped=model["skipped"])
-    event("mtp_done", seconds=mtp["seconds"], skipped=mtp["skipped"])
+    draft = results.get(drafting, {"seconds": 0, "skipped": True, "download_bytes": 0})
+    event("drafting_done", mode=drafting, seconds=draft["seconds"], skipped=draft["skipped"],
+          download_bytes=draft["download_bytes"])
     event("parallel_setup_done", seconds=round(time.monotonic() - started, 1),
-          branches={name: results[name]["seconds"] for name in ("engine", "model", "mtp")})
+          branches={name: results[name]["seconds"] for name in tasks})
     return results
 
 
@@ -481,6 +617,13 @@ def configure(config, env):
             raise RuntimeError("Strata setup did not use the bundled per-layer projection profile")
     # Direct PLE I/O is the safe default on low-RAM Colab machines; explicit --ple-io overrides remain effective.
     args += ["--ple-io", "direct", *json.loads(env.get("STRATA_EXTRA_ARGS", "[]"))]
+    drafting = env["STRATA_DRAFTING"]
+    if ("--mtp" in args) != (drafting == "mtp"):
+        raise RuntimeError("Strata setup did not honor the requested MTP layer setting")
+    config["drafting"] = drafting
+    config["mtp"] = drafting == "mtp"
+    config["parallel"] = 1
+    config.pop("user_args", None)
     config["model_name"] = env["STRATA_ALIAS"]
     # stderr reaches the persistent tee below, so native, vision and API logs go to engine.log AND setup.out.
     config["log"] = "/dev/stderr"
@@ -490,24 +633,40 @@ def configure(config, env):
     return config
 
 
-def finalize_model(python, env):
+def finalize_model(python, env, low_ram, engine_source):
     """Let pinned upstream verify the completed branches and write the authoritative launch configuration."""
     started = time.monotonic()
-    run([python, "-u", "setup.py", "--family", "qwen", "--model", env["STRATA_QUANT"],
-         "--context", env["STRATA_CTX"], "--kv", env["STRATA_KV"], "--vision", env["STRATA_VISION"],
-         "--experimental-speed-projection", env["STRATA_PROJECTION"], "--low-ram", env["STRATA_LOW_RAM"],
-         "--port", env["STRATA_PORT"],
-         "--host", "127.0.0.1", "--data-dir", str(DATA), "--build", "--yes", "--no-start"],
-        cwd=SOURCE, env=env, timeout=float(env.get("FINALIZE_TIMEOUT", "1800")), label="finalize")
     quant = env["STRATA_QUANT"]
+    path = SOURCE / f"strata-{quant.lower()}.json"
+    path.unlink(missing_ok=True)
+    path.with_suffix(".shared-settings.json").unlink(missing_ok=True)
+    mtp = env["STRATA_DRAFTING"] == "mtp"
+    script = "import setup as S\n"
+    if engine_source == "prebuilt":
+        # The checked portable package ships its CUDA libs. Upstream's zip installer normally gets them from pip.
+        script += "S.pip_cuda_libs = lambda *args: None\n"
+    if not mtp:
+        # v0.2.15 otherwise repairs a cached MTP layer even when --mtp off was explicit.
+        script += "S.mtp_corrupt = lambda *args: False\nS.refresh_draft_vocab = lambda *args: None\n"
+    script += "raise SystemExit(S.main())\n"
+    engine_args = ["--prebuilt", "", "--cuda", "13"] if engine_source == "prebuilt" else ["--build"]
+    run([python, "-u", "-c", script, "--family", "qwen", "--model", quant,
+         "--context", env["STRATA_CTX"], "--kv", env["STRATA_KV"], "--vision", env["STRATA_VISION"],
+         "--experimental-speed-projection", env["STRATA_PROJECTION"], "--low-ram", "mmap" if low_ram else "off",
+         "--mtp", "on" if mtp else "off", "--parallel", "1", "--port", env["STRATA_PORT"],
+         "--host", "127.0.0.1", "--data-dir", str(DATA), *engine_args, "--yes", "--no-start"],
+        cwd=SOURCE, env=env, timeout=float(env.get("FINALIZE_TIMEOUT", "1800")), label="finalize")
     shards = model_artifacts(env)[:2]
     if any(not path.is_file() for path in shards):
         raise RuntimeError("Strata setup did not retain both official GGUF shards")
-    path = SOURCE / f"strata-{quant.lower()}.json"
     config = configure(json.loads(path.read_text()), env)
+    if engine_source == "prebuilt":
+        engine = SOURCE / "engine"
+        meta = json.loads((engine / "BUILD.json").read_text())
+        if Path(config["exe"]) != engine / "strata" or meta.get("version") != ENGINE_VERSION:
+            raise RuntimeError("Strata setup did not retain the checked prebuilt engine")
+        config["lib_dirs"] = [str(engine)]
     path.write_text(json.dumps(config, indent=1))
-    # The upstream web UI persists defaults beside each config; a new run must honor its opt-in setting.
-    path.with_suffix(".shared-settings.json").unlink(missing_ok=True)
     event("setup_finalize_done", seconds=round(time.monotonic() - started, 1))
     return path, config
 
@@ -520,11 +679,14 @@ def read_json(port, path):
 def confirm_capabilities(health, models, env, metrics):
     if health.get("status") != "ok" or health.get("model") != env["STRATA_ALIAS"]:
         raise RuntimeError("Strata health did not confirm the requested model alias")
+    if health.get("loaded") is False:
+        raise RuntimeError("Strata health did not confirm a loaded model")
     if health.get("max_context") != int(env["STRATA_CTX"]):
         raise RuntimeError(f"Strata loaded context {health.get('max_context')} "
                            f"differs from requested {env['STRATA_CTX']}")
     model = next((m for m in models.get("data", []) if m.get("id") == env["STRATA_ALIAS"]), None)
-    if not model or model.get("meta", {}).get("n_ctx") != int(env["STRATA_CTX"]):
+    if (not model or model.get("status", {}).get("value") == "unloaded"
+            or model.get("meta", {}).get("n_ctx") != int(env["STRATA_CTX"])):
         raise RuntimeError("Strata model metadata did not confirm the requested loaded model/context")
     wants_vision = env["STRATA_VISION"] == "gpu"
     images = "image" in model.get("architecture", {}).get("input_modalities", [])
@@ -536,6 +698,9 @@ def confirm_capabilities(health, models, env, metrics):
     expected = "project:4-44" if env["STRATA_PROJECTION"] == "on" else "0"
     if str(engine.get("cvec")) != expected:
         raise RuntimeError("Strata engine did not confirm the requested refusal projection profile")
+    if engine.get("drafting") != env["STRATA_DRAFTING"]:
+        raise RuntimeError(f"Strata loaded drafting mode {engine.get('drafting')!r}; "
+                           f"expected {env['STRATA_DRAFTING']}: {engine.get('drafting_note', '')}")
     return {"vision": wants_vision}
 
 
@@ -641,11 +806,12 @@ def main():
     # Isolate upstream's persistent setup choices, and clear request auth inherited from Colab exec.
     # Upstream rejects an explicitly empty STRATA_API_KEY: remove the cleared Colab variable in the child env.
     env.pop("STRATA_API_KEY", None)
+    env.pop("STRATA_PREBUILT_URL", None)
     env.update(HF_HUB_DISABLE_XET="1", HF_HUB_DISABLE_PROGRESS_BARS="1",
-               XDG_CONFIG_HOME=str(ROOT / "strata-settings"), STRATA_PREBUILT_URL="")
-    python, low_ram, install_started = prepare(env)
-    parallel_setup(python, env, low_ram, install_started)
-    path, config = finalize_model(python, env)
+               XDG_CONFIG_HOME=str(ROOT / "strata-settings"))
+    python, low_ram, gpu, install_started = prepare(env)
+    branches = parallel_setup(python, env, low_ram, gpu, install_started)
+    path, config = finalize_model(python, env, low_ram, branches["engine"]["source"])
     serve(python, path, config, env)
 
 
