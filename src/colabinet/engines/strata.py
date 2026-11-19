@@ -1,4 +1,4 @@
-"""Strata adapter for the original Qwen3.8 Flash-Next models."""
+"""Strata adapter for the supported Qwen GGUFs."""
 
 from __future__ import annotations
 
@@ -12,6 +12,12 @@ LEGACY_RELEASE = "d6708a4aae15b4860000d54c8af9e84d684bce09"
 REPO = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
 QUANTS = ("IQ2_XS", "IQ3_XXS", "IQ3_S")
 FILES = {f"{q}/Qwen3.8-Flash-Next-GSQ-RCO-{q}-00001-of-00002.gguf": q for q in QUANTS}
+QWEN36_REPO = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF"
+QWEN36_QUANT = "UD-Q4_K_XL"
+QWEN36_FILE = f"Qwen3.6-35B-A3B-{QWEN36_QUANT}.gguf"
+QWEN36_CTX = 8192
+QWEN36_KV = "f32"
+QWEN36_RAM_GIB = 32
 # These options would change managed settings, route setup/server options to the engine, or replace the model.
 MANAGED_ARGS = {
     "--pack", "--native", "--ple-gguf", "--mtp", "--max-context", "--kv", "--vision", "--serve",
@@ -44,17 +50,25 @@ def _split_setup_args(args: tuple[str, ...]) -> tuple[str, str, tuple[str, ...]]
 
 def validate_spec(spec: RunSpec) -> None:
     """Reject unsupported requests before lifecycle allocation or mutation."""
-    if spec.repo != REPO or spec.file not in FILES:
+    qwen36 = spec.repo == QWEN36_REPO
+    if qwen36:
+        if spec.file != QWEN36_FILE:
+            raise ValueError(f"Strata Qwen3.6 requires the pinned {QWEN36_FILE} file")
+        if spec.kv != QWEN36_KV:
+            raise ValueError("Strata Qwen3.6 uses a fixed FP32 KV cache (f32)")
+        if spec.refusal_projection:
+            raise ValueError("Strata refusal projection is available for the original Qwen3.8 Flash-Next only")
+    elif spec.repo != REPO or spec.file not in FILES:
         raise ValueError("Strata requires the original ISTA-DASLab Qwen3.8-Flash-Next-GSQ-RCO-GGUF repository "
                          "and exact IQ2_XS, IQ3_XXS or IQ3_S first-shard path")
     if spec.parallel != 1:
         raise ValueError("Strata supports parallel=1 only (FIFO serialized requests)")
-    if spec.kv not in ("int8", "q4_0", "k8v4"):
+    if not qwen36 and spec.kv not in ("int8", "q4_0", "k8v4"):
         raise ValueError("Strata KV must be int8, q4_0 or k8v4")
     if not isinstance(spec.ctx, int) or isinstance(spec.ctx, bool) or not 0 < spec.ctx <= 262144:
         raise ValueError("Strata context must be a positive integer at most 262144")
     if spec.template or spec.mmproj or spec.mmproj_gpu or spec.vision_offload:
-        raise ValueError("Strata manages its template and GPU vision projector; template/mmproj/offload overrides "
+        raise ValueError("Strata manages its template and vision projector; template/mmproj/offload overrides "
                          "are unsupported (use vision=true or false)")
     if spec.revision:
         raise ValueError("Strata upstream setup does not support model revision overrides")
@@ -68,6 +82,11 @@ def validate_spec(spec: RunSpec) -> None:
         flag = arg.split("=", 1)[0]
         if flag in MANAGED_ARGS or flag.startswith("--draft-"):
             raise ValueError(f"Strata extra_args cannot override managed option {arg!r}")
+        if qwen36 and (flag in SETUP_OPTIONS or flag in ("--ple-io", "--kv-resident", "--mmap-experts",
+                                                       "--resident-experts", "--resident-budget-gib",
+                                                       "--rope-scaling", "--rope-scale", "--batch", "--batch-mtp")):
+            raise ValueError(f"Omit {flag} for Strata Qwen3.6. This preset manages embedded MTP, "
+                             "automatic expert placement and single-request serving.")
     _split_setup_args(spec.extra_args)
     for i, arg in enumerate(spec.extra_args):
         if arg == "--ple-io":
@@ -89,15 +108,19 @@ class StrataEngine:
 
     def setup_env(self, spec: RunSpec, vm_port: int, run_id: int) -> dict[str, str]:
         validate_spec(spec)
+        qwen36 = spec.repo == QWEN36_REPO
+        vision = ("cpu" if qwen36 else "gpu") if spec.vision else "none"
         low_ram, drafting, native_args = _split_setup_args(spec.extra_args)
         # Colab exec retains environment variables: always send explicit on/off and empty extra args.
         return {
             "SCRIPT": f"{VM_ROOT}/{self.script.name}", "OUT": f"{VM_ROOT}/setup.out",
             "EVENTS": f"{VM_ROOT}/run-{run_id}.jsonl", "ENGINE_LOG": f"{VM_ROOT}/engine.log",
             "STRATA_RELEASE": RELEASE, "STRATA_REPO": spec.repo, "STRATA_FILE": spec.file,
-            "STRATA_QUANT": FILES[spec.file], "STRATA_ALIAS": spec.alias, "STRATA_PORT": str(vm_port),
+            "STRATA_FAMILY": "qwen36" if qwen36 else "qwen",
+            "STRATA_QUANT": QWEN36_QUANT if qwen36 else FILES[spec.file],
+            "STRATA_ALIAS": spec.alias, "STRATA_PORT": str(vm_port),
             "STRATA_CTX": str(spec.ctx), "STRATA_KV": spec.kv,
-            "STRATA_VISION": "gpu" if spec.vision else "none",
+            "STRATA_VISION": vision,
             "STRATA_PROJECTION": "on" if spec.refusal_projection else "off",
             "STRATA_LOW_RAM": low_ram, "STRATA_DRAFTING": drafting, "STRATA_EXTRA_ARGS": json.dumps(list(native_args)),
             "STRATA_API_KEY": "", "STRATA_GPU": "",

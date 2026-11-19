@@ -10,6 +10,7 @@ from typing import Any
 
 from .. import billing
 from ..config import GPU_CLASSES, SYSTEM_RAM_GB, VRAM_GB
+from ..engines.strata import QWEN36_CTX, QWEN36_FILE, QWEN36_KV, QWEN36_QUANT, QWEN36_RAM_GIB
 from ..fit import EXL3_OVERHEAD_GB, OVERHEAD_GB, Fit, estimate, kv_gb
 from ..metrics import cu_by_group
 from ..presets import Measured, Preset, PresetError
@@ -217,7 +218,8 @@ async def requests_of(sup: Supervisor, sid: int, limit: int = 200) -> list[dict[
         "SELECT * FROM request_stats WHERE session_id = ? ORDER BY id DESC LIMIT ?", (sid, limit))
 
 
-def fit_presentation(engine: str, fit: Fit, preset: Preset | None, gpu: str) -> dict[str, str]:
+def fit_presentation(engine: str, fit: Fit, preset: Preset | None, gpu: str,
+                     strata_quant: str | None = None) -> dict[str, str]:
     """Show fit estimates or recorded GPU evidence, never infer evidence from fallback defaults."""
     if engine == "strata":
         if fit.verdict == "cpu":
@@ -228,6 +230,9 @@ def fit_presentation(engine: str, fit: Fit, preset: Preset | None, gpu: str) -> 
             return {"label": label, "variant": variant,
                     "message": evidence.message + " Recorded evidence is not a RAM/VRAM estimate or a guarantee "
                                "for the requested context, PLE mode or refusal projection."}
+        if strata_quant == QWEN36_QUANT:
+            return {"label": "Not benchmarked", "variant": "outline",
+                    "message": "Qwen3.6 places experts in VRAM and host RAM. This preset uses CPU vision."}
         return {"label": "Not benchmarked", "variant": "outline",
                 "message": "No recorded benchmark for this preset/GPU pair. Strata uses a GPU expert cache, "
                            "host RAM and a shared 28.8 GB PLE table. Download size is not VRAM residency; "
@@ -289,7 +294,7 @@ def gpu_fit(engine: str, gpu: str, preset: Preset | None, weights_gb: float | No
     fits, and "warn" for everything that runs with a caveat, such as llama.cpp offloading layers to the CPU."""
     fit = estimate(gpu, weights_gb, ctx, kv, kv_bytes_per_token,
                    overhead_gb=EXL3_OVERHEAD_GB if engine == "exllamav3" else OVERHEAD_GB)
-    shown = fit_presentation(engine, fit, preset, gpu)
+    shown = fit_presentation(engine, fit, preset, gpu, strata_quant)
     if engine == "llamacpp" and weights_gb and host_ram_gb:
         # Offloaded layers live in host RAM; past VRAM + RAM, llama.cpp pages weights from disk and is unusable.
         need = weights_gb + (kv_gb(ctx, kv, kv_bytes_per_token) or 0.0) + OVERHEAD_GB
@@ -305,6 +310,10 @@ def gpu_fit(engine: str, gpu: str, preset: Preset | None, weights_gb: float | No
         refusal = strata_policy(strata_quant, host_ram_gb * 1e9 / 2**30, VRAM_GB[gpu], low_ram, drafting)
         if refusal:
             shown = {"label": "Not enough RAM", "variant": "destructive", "message": refusal}
+    if (engine == "strata" and strata_quant == QWEN36_QUANT and VRAM_GB.get(gpu)
+            and host_ram_gb and host_ram_gb * 1e9 / 2**30 < QWEN36_RAM_GIB):
+        shown = {"label": "Not enough RAM", "variant": "destructive",
+                 "message": f"Strata Qwen3.6 {QWEN36_QUANT} needs {QWEN36_RAM_GIB} GiB host RAM"}
     return {"gpu": gpu, "verdict": fit.verdict, "ctx": ctx, "kv": kv, "kv_gb": fit.kv_gb,
             "status": {"destructive": "blocked", "secondary": "ok"}.get(shown["variant"], "warn"),
             "measured": measured_speed(preset.measured.get(gpu) if preset else None), **shown}
@@ -338,6 +347,8 @@ def fit_matrix(preset, host_ram: dict[str, float] | None = None) -> list[dict[st
 
 
 def strata_quant(file: str | None) -> str | None:
+    if file == QWEN36_FILE:
+        return QWEN36_QUANT
     return file.split("/", 1)[0] if file and file.split("/", 1)[0] in STRATA_MODELS else None
 
 
@@ -351,6 +362,10 @@ def session_fit(engine: str, preset: Preset | None, gpus: list[str], host_ram: d
     strata = engine == "strata"
     if preset:
         weights_gb, file = preset.weights_gb, preset.file
+    quant = strata_quant(file) if strata else None
+    default_ctx = QWEN36_CTX if quant == QWEN36_QUANT else 131072 if strata else 32768
+    default_kv = QWEN36_KV if quant == QWEN36_QUANT else {
+        "exllamav3": "FP16", "strata": "int8"}.get(engine, "f16")
     out = {}
     for gpu in gpus:
         defaults = preset.defaults_for(gpu) if preset else None
@@ -358,9 +373,9 @@ def session_fit(engine: str, preset: Preset | None, gpus: list[str], host_ram: d
         out[gpu] = gpu_fit(
             engine, gpu, preset, None if strata else weights_gb,
             None if strata or not preset else preset.kv_bytes_per_token_f16,
-            ctx or (defaults.ctx if defaults else 131072 if strata else 32768),
-            kv or (defaults.kv if defaults else {"exllamav3": "FP16", "strata": "int8"}.get(engine, "f16")),
-            host_ram.get(gpu), strata_quant(file) if strata else None, *strata_setup_modes(args))
+            ctx or (defaults.ctx if defaults else default_ctx),
+            kv or (defaults.kv if defaults else default_kv),
+            host_ram.get(gpu), quant, *strata_setup_modes(args))
     return out
 
 
@@ -417,10 +432,13 @@ async def models(sup: Supervisor) -> dict[str, Any]:
 def custom_preset_toml(run: dict[str, Any]) -> str:
     ident = (run["alias"] or run["repo"].split("/")[-1]).replace("/", "-").lower()
     key = "file" if run["engine"] in ("llamacpp", "strata") else "revision"
+    settings = ""
+    if run["engine"] == "strata":
+        settings = ('vision = true\n\n[preset.gpu.default]\nctx = 8192\nkv = "f32"\n'
+                    if run["file_or_rev"] == QWEN36_FILE
+                    else 'vision = true\n\n[preset.gpu.A100]\nctx = 131072\nkv = "int8"\n')
     return (f'[[preset]]\nid = "{ident}"\nengine = "{run["engine"]}"\nlabel = "{run["alias"] or run["repo"]}"\n'
-            f'repo = "{run["repo"]}"\n{key} = "{run["file_or_rev"]}"\nalias = "{run["alias"]}"\n'
-            + ('vision = true\n\n[preset.gpu.A100]\nctx = 131072\nkv = "int8"\n'
-               if run["engine"] == "strata" else ''))
+            f'repo = "{run["repo"]}"\n{key} = "{run["file_or_rev"]}"\nalias = "{run["alias"]}"\n{settings}')
 
 
 async def settings(sup: Supervisor) -> dict[str, Any]:

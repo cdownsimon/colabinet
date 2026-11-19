@@ -9,13 +9,14 @@ from pydantic import ValidationError
 from colabinet.alerts import Alerts, NullNotifier
 from colabinet.api import CreateBody, ReconfigureBody
 from colabinet.config import REPO_ROOT, Settings
-from colabinet.engines.strata import LEGACY_RELEASE, RELEASE, StrataEngine
+from colabinet.engines.strata import LEGACY_RELEASE, QWEN36_FILE, QWEN36_REPO, RELEASE, StrataEngine
 from colabinet.presets import load_presets
 from colabinet.supervisor import CreateRefused, CreateRequest, Supervisor
 
 REPO = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
 FILE = "IQ2_XS/Qwen3.8-Flash-Next-GSQ-RCO-IQ2_XS-00001-of-00002.gguf"
 PRESET = "qwen38-flash-next-strata-iq2-xs"
+QWEN36_PRESET = "qwen36-35b-a3b-strata-ud-q4-k-xl"
 
 
 @pytest.fixture
@@ -225,6 +226,24 @@ def test_current_presets_and_legacy_run_specs_use_the_new_strata_pin(supervisor)
             env = StrataEngine().setup_env(dataclasses.replace(spec, release=LEGACY_RELEASE), 8090, 1)
             assert env["STRATA_RELEASE"] == expected
             assert env["STRATA_DRAFTING"] == "mtp"
+
+
+@pytest.mark.parametrize("preset_id", [QWEN36_PRESET, None])
+def test_qwen36_preset_and_exact_custom_model_share_valid_defaults(supervisor, preset_id):
+    spec = supervisor._run_spec(request(gpu_class="L4", repo=QWEN36_REPO, file=QWEN36_FILE, preset_id=preset_id))
+    supervisor._validate_spec(spec, "L4")
+    assert (spec.ctx, spec.kv, spec.vision, spec.parallel) == (8192, "f32", True, 1)
+    env = StrataEngine().setup_env(spec, 8090, 1)
+    assert (env["STRATA_FAMILY"], env["STRATA_QUANT"], env["STRATA_VISION"]) == ("qwen36", "UD-Q4_K_XL", "cpu")
+
+
+async def test_switch_to_qwen36_drops_flash_next_model_settings(supervisor):
+    sid = await seed_run(supervisor, gpu="L4", projection=True)
+    await supervisor.reconfigure(sid, preset_id=QWEN36_PRESET)
+    run = await supervisor.store.current_run(sid)
+    spec = json.loads(run["spec_json"])
+    assert (spec["repo"], spec["file"], spec["kv"], spec["ctx"]) == (QWEN36_REPO, QWEN36_FILE, "f32", 8192)
+    assert spec["refusal_projection"] is False and spec["extra_args"] == []
 
 
 def test_custom_strata_toml_round_trips_file_and_gpu_vision(supervisor, tmp_path):

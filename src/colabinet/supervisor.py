@@ -28,6 +28,7 @@ from .config import GPU_CLASSES, Settings, detected_class
 from .diagnostics import bounded_diagnostic
 from .engines import ENGINES, VM_ROOT, Engine, RunSpec
 from .engines.base import VM_DIR
+from .engines.strata import QWEN36_CTX, QWEN36_KV, QWEN36_REPO
 from .guards import evaluate, evaluate_daily
 from .net import first_free, port_free
 from .presets import PresetError, Presets, load_presets
@@ -322,10 +323,13 @@ class Supervisor:
         release = pins.get("release") or (f"{pins['wheel']}@{pins['tabbyapi_commit']}"
                                            if pins.get("wheel") and pins.get("tabbyapi_commit") else None)
         default_kv = {"llamacpp": "f16", "strata": "int8"}.get(req.engine, "FP16")
+        default_ctx = 131072 if req.engine == "strata" else 32768
+        if req.engine == "strata" and req.repo == QWEN36_REPO:
+            default_ctx, default_kv = QWEN36_CTX, QWEN36_KV
         return RunSpec(engine=req.engine, repo=req.repo, file=req.file, revision=req.revision,
                        alias=req.alias or (req.repo.split("/")[-1] if req.engine == "strata" else req.file
                                            or req.repo.split("/")[-1]),
-                       ctx=req.ctx if req.ctx is not None else (131072 if req.engine == "strata" else 32768),
+                       ctx=req.ctx if req.ctx is not None else default_ctx,
                        kv=req.kv or default_kv, parallel=req.parallel if req.parallel is not None else 1,
                        vision=req.engine == "strata", refusal_projection=req.refusal_projection or False,
                        extra_args=tuple(req.extra_args), release=release)

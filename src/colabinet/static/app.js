@@ -288,12 +288,16 @@
     form.dataset.custom = String(custom);
     const engineControl = document.getElementById('engine');
     const engine = custom ? engineControl.value : select.selectedOptions[0]?.dataset.engine || 'llamacpp';
-    if (form.dataset.engine && form.dataset.engine !== engine) {
+    const repo = document.getElementById('repo');
+    const qwen36 = engine === 'strata' && (custom
+      ? repo.value.trim() === form.dataset.qwen36Repo : select.selectedOptions[0]?.dataset.qwen36 === 'true');
+    if (form.dataset.engine && (form.dataset.engine !== engine || (form.dataset.qwen36 === 'true') !== qwen36)) {
       document.getElementById('kv').value = '';
       document.getElementById('extra_args').value = '';
       document.getElementById('refusal_projection').value = '';
     }
     form.dataset.engine = engine;
+    form.dataset.qwen36 = String(qwen36);
     engineControl.value = engine;
     form.querySelectorAll('.cb-custom').forEach((field) => {
       const enabled = custom && (!field.dataset.engineField || field.dataset.engineField.split(' ').includes(engine));
@@ -301,26 +305,36 @@
       field.querySelectorAll('input, select').forEach((control) => control.disabled = !enabled);
     });
     document.getElementById('kv').setAttribute('list', `kv-types-${engine}`);
-    document.getElementById('extra_args').placeholder = engine === 'exllamav3'
+    document.getElementById('extra_args').placeholder = qwen36 ? '' : engine === 'exllamav3'
       ? 'model.chunk_size=4096' : engine === 'strata' ? '--ple-io direct' : '--reasoning-budget 4096';
-    document.getElementById('projection-field').hidden = engine !== 'strata';
-    document.getElementById('refusal_projection').disabled = engine !== 'strata';
-    document.getElementById('ctx').placeholder = custom && engine === 'strata' ? '131072' : 'preset default';
+    const projection = engine === 'strata' && !qwen36;
+    document.getElementById('projection-field').hidden = !projection;
+    document.getElementById('refusal_projection').disabled = !projection;
+    document.getElementById('ctx').placeholder = custom && engine === 'strata'
+      ? (qwen36 ? '8192' : '131072') : 'preset default';
     document.getElementById('parallel').placeholder = engine === 'strata' ? '1 (FIFO, single sequence)' : 'preset default';
-    document.getElementById('kv').placeholder = custom && engine === 'strata' ? 'int8' : 'preset default';
-    document.getElementById('repo').placeholder = engine === 'strata'
+    document.getElementById('kv').disabled = qwen36;
+    document.getElementById('kv').placeholder = qwen36 ? 'f32 (fixed)' : custom && engine === 'strata' ? 'int8' : 'preset default';
+    repo.placeholder = engine === 'strata'
       ? 'ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF' : 'org/model';
-    document.getElementById('file').placeholder = engine === 'strata'
+    document.getElementById('file').placeholder = qwen36 ? 'Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf' : engine === 'strata'
       ? 'IQ2_XS/Qwen3.8-Flash-Next-GSQ-RCO-IQ2_XS-00001-of-00002.gguf' : 'model-Q4_K_M.gguf';
   };
   window.cbReconfigureChanged = (select) => {
-    const engine = select.selectedOptions[0]?.dataset.engine || 'llamacpp';
+    const model = select.selectedOptions[0]?.dataset;
+    const engine = model?.engine || 'llamacpp';
+    const qwen36 = engine === 'strata' && model?.qwen36 === 'true';
     const projection = document.getElementById('rc-projection');
-    document.getElementById('rc-projection-field').hidden = engine !== 'strata';
-    projection.disabled = engine !== 'strata';
-    if (engine !== 'strata') projection.value = '';
-    document.getElementById('rc-kv').setAttribute('list', `rc-kv-types-${engine}`);
-    document.getElementById('rc-extra').placeholder = engine === 'exllamav3'
+    projection.disabled = engine !== 'strata' || qwen36;
+    document.getElementById('rc-projection-field').hidden = projection.disabled;
+    if (projection.disabled) projection.value = '';
+    const kv = document.getElementById('rc-kv');
+    kv.dataset.currentKv ??= kv.placeholder;
+    if (kv.disabled !== qwen36) kv.value = '';
+    kv.disabled = qwen36;
+    kv.placeholder = qwen36 ? 'f32 (fixed)' : select.value ? 'preset default' : kv.dataset.currentKv;
+    kv.setAttribute('list', `rc-kv-types-${engine}`);
+    document.getElementById('rc-extra').placeholder = qwen36 ? '' : engine === 'exllamav3'
       ? 'model.chunk_size=4096' : engine === 'strata' ? '--ple-io direct' : '--reasoning-budget 4096';
   };
   window.cbReviewCreate = async () => {

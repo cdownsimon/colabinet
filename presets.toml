@@ -50,12 +50,12 @@ mmproj_gpu = true
 # Q4_K above (16.46 vs 16.81 GB), so it keeps the same per-GPU defaults; the 18.97 GB ggml-org Q4_K_M would
 # not fit L4 at 256K. The stock chat template matches Qwen/Qwen3.8-27B, so the effort-mapped one applies.
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-T4 = { gen_tps = 1.0, prefill_tps = 140, date = "2026-10-13", note = "CPU offload" }
-T4-HIGHMEM = { gen_tps = 3.0, prefill_tps = 167, date = "2026-10-13", note = "CPU offload" }
-L4 = { gen_tps = 13.1, prefill_tps = 660, date = "2026-10-13" }
-A100 = { gen_tps = 43.0, prefill_tps = 1194, date = "2026-10-13" }
-A100-80 = { gen_tps = 45.2, prefill_tps = 1214, date = "2026-10-13" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+T4 = { gen_tps = 1.52, prefill_tps = 177.26, date = "2026-11-19", note = "1 warmed request, b12359" }
+T4-HIGHMEM = { gen_tps = 4.327, prefill_tps = 208.45, date = "2026-11-19", note = "3 warmed requests, b12359" }
+L4 = { gen_tps = 14.449, prefill_tps = 807.6, date = "2026-11-19", note = "3 warmed requests, b12359" }
+A100 = { gen_tps = 46.09, prefill_tps = 1302.95, date = "2026-11-19", note = "3 warmed requests, b12359" }
+A100-80 = { gen_tps = 48.235, prefill_tps = 1311.03, date = "2026-11-19", note = "3 warmed requests, b12359" }
 G4 = { gen_tps = 67.8, prefill_tps = 3527, date = "2026-10-13" }
 
 [[preset]]
@@ -92,13 +92,13 @@ ctx = 262144
 kv = "f16"
 mmproj_gpu = true
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-CPU = { gen_tps = 0.024, date = "2026-10-13", note = "4 tokens out; the model pages from disk" }
-T4 = { gen_tps = 1.2, date = "2026-10-13", note = "CPU offload" }
-T4-HIGHMEM = { gen_tps = 3.9, prefill_tps = 200, date = "2026-10-13", note = "CPU offload" }
-L4 = { gen_tps = 14.6, prefill_tps = 715, date = "2026-10-13" }
-A100 = { gen_tps = 47.2, prefill_tps = 1219, date = "2026-10-13" }
-A100-80 = { gen_tps = 49.4, prefill_tps = 1230, date = "2026-10-13" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+CPU = { gen_tps = 0.028, date = "2026-11-19", note = "4-token CPU diagnostic with disk paging, b12359" }
+T4 = { gen_tps = 1.447, prefill_tps = 186.2, date = "2026-11-19", note = "1 warmed request, b12359" }
+T4-HIGHMEM = { gen_tps = 4.044, prefill_tps = 222.01, date = "2026-11-19", note = "3 warmed requests, b12359" }
+L4 = { gen_tps = 14.827, prefill_tps = 841.57, date = "2026-11-19", note = "3 warmed requests, b12359" }
+A100 = { gen_tps = 48.829, prefill_tps = 1307.85, date = "2026-11-19", note = "3 warmed requests, b12359" }
+A100-80 = { gen_tps = 51.932, prefill_tps = 1318.04, date = "2026-11-19", note = "3 warmed requests, b12359" }
 G4 = { gen_tps = 71.2, prefill_tps = 3652, date = "2026-10-13" }
 
 [[preset]]
@@ -131,10 +131,10 @@ kv = "FP16"
 # The original (not abliterated) model from the same quantizer and bitrate. Its layers and lm_head are the same
 # 13.2 GB as the abliterated build (embeddings stay in system RAM); only the offloaded vision tower is larger.
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-L4 = { gen_tps = 16.2, prefill_tps = 736, date = "2026-10-13" }
-A100 = { gen_tps = 46.9, prefill_tps = 2639, date = "2026-10-13" }
-A100-80 = { gen_tps = 48.9, prefill_tps = 2673, date = "2026-10-13" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+L4 = { gen_tps = 16.461, prefill_tps = 587.96, date = "2026-11-19", note = "3 warmed requests, 1.6.7+4728158" }
+A100 = { gen_tps = 50.157, prefill_tps = 1860.0, date = "2026-11-19", note = "3 warmed requests, 1.6.7+4728158" }
+A100-80 = { gen_tps = 51.613, prefill_tps = 1882.86, date = "2026-11-19", note = "3 warmed requests, 1.6.7+4728158" }
 G4 = { gen_tps = 67.8, prefill_tps = 4854, date = "2026-10-13" }
 
 [[preset]]
@@ -168,10 +168,10 @@ kv = "FP16"
 # A100 40GB requires CPU offload and sufficient host RAM; fit remains advisory.
 # Start with 8K context. KV size is deliberately unknown for this hybrid architecture.
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-L4 = { gen_tps = 16.3, prefill_tps = 525, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
-A100 = { gen_tps = 47.5, prefill_tps = 795, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
-A100-80 = { gen_tps = 46.5, prefill_tps = 727, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+L4 = { gen_tps = 16.495, prefill_tps = 711.6, date = "2026-11-19", note = "3 warmed requests, 1.6.7+4728158" }
+A100 = { gen_tps = 50.157, prefill_tps = 2757.42, date = "2026-11-19", note = "3 warmed requests, 1.6.7+4728158" }
+A100-80 = { gen_tps = 52.288, prefill_tps = 2844.19, date = "2026-11-19", note = "3 warmed requests, 1.6.7+4728158" }
 G4 = { gen_tps = 65.3, prefill_tps = 2346, date = "2026-10-13", note = "prefill includes the VM's first ExLlamaV3 kernel warm-up" }
 
 [[preset]]
@@ -203,12 +203,9 @@ kv = "f16"
 # weights_gb counts both GGUF shards, NOT required VRAM. The 28.8 GB PLE table is shared.
 # Vision is required for these presets; refusal projection remains opt-in.
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-T4 = { gen_tps = 0.24, date = "2026-10-13", note = "weights page from disk" }
-T4-HIGHMEM = { gen_tps = 1.8, prefill_tps = 9, date = "2026-10-13", note = "weights page from disk" }
-L4 = { gen_tps = 3.0, prefill_tps = 11, date = "2026-10-13", note = "weights page from disk" }
-A100 = { gen_tps = 8.0, prefill_tps = 90, date = "2026-10-13", note = "CPU offload, first request; warmed 2026-10-03 runs measured 19.7 tok/s" }
-A100-80 = { gen_tps = 38.7, prefill_tps = 886, date = "2026-10-13" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+A100 = { gen_tps = 19.494, prefill_tps = 84.11, date = "2026-11-19", note = "3 warmed requests, b12359" }
+A100-80 = { gen_tps = 54.97, prefill_tps = 1667.05, date = "2026-11-19", note = "3 warmed requests, b12359" }
 G4 = { gen_tps = 50.8, prefill_tps = 1366, date = "2026-10-13" }
 
 [[preset]]
@@ -275,11 +272,11 @@ normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token
 passed on a freshly loaded engine; one cold pass, not full-context validation.
 Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-T4-HIGHMEM = { gen_tps = 14.4, prefill_tps = 346, date = "2026-10-13" }
-L4 = { gen_tps = 28.4, prefill_tps = 1075, date = "2026-10-13" }
-A100 = { gen_tps = 42.2, prefill_tps = 1625, date = "2026-10-13" }
-A100-80 = { gen_tps = 66.6, prefill_tps = 1924, date = "2026-10-13" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+T4-HIGHMEM = { gen_tps = 28.059, prefill_tps = 482.75, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+L4 = { gen_tps = 47.554, prefill_tps = 1277.01, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+A100 = { gen_tps = 79.087, prefill_tps = 2683.46, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
+A100-80 = { gen_tps = 88.8, prefill_tps = 2697.53, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
 G4 = { gen_tps = 87.9, prefill_tps = 3746, date = "2026-10-13" }
 
 [[preset]]
@@ -357,11 +354,11 @@ normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token
 passed on a freshly loaded engine; one cold pass, not full-context validation.
 Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-T4-HIGHMEM = { gen_tps = 3.4, prefill_tps = 57, date = "2026-10-13" }
-L4 = { gen_tps = 5.6, prefill_tps = 82, date = "2026-10-13" }
-A100 = { gen_tps = 37.9, prefill_tps = 1786, date = "2026-10-13" }
-A100-80 = { gen_tps = 41.9, prefill_tps = 1834, date = "2026-10-13" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+T4-HIGHMEM = { gen_tps = 18.954, prefill_tps = 73.7, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+L4 = { gen_tps = 33.084, prefill_tps = 338.82, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+A100 = { gen_tps = 76.136, prefill_tps = 2745.42, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
+A100-80 = { gen_tps = 71.897, prefill_tps = 2941.33, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
 G4 = { gen_tps = 48.5, prefill_tps = 3150, date = "2026-10-13" }
 
 [[preset]]
@@ -432,9 +429,37 @@ normal mode as upstream's auto policy selected. A 26-token prompt, a 4,223-token
 passed on a freshly loaded engine; one cold pass, not full-context validation.
 Source: docs/benchmarks/2026-10-13-qwen38-preset-matrix.md."""
 
-[preset.measured]  # one pass at the preset's defaults; docs/benchmarks/2026-10-13-qwen38-preset-matrix.md
-T4-HIGHMEM = { gen_tps = 2.8, prefill_tps = 35, date = "2026-10-13" }
-L4 = { gen_tps = 4.3, prefill_tps = 53, date = "2026-10-13" }
-A100 = { gen_tps = 36.7, prefill_tps = 1602, date = "2026-10-13" }
-A100-80 = { gen_tps = 43.9, prefill_tps = 1810, date = "2026-10-13" }
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+T4-HIGHMEM = { gen_tps = 11.242, prefill_tps = 55.37, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+L4 = { gen_tps = 24.016, prefill_tps = 68.61, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+A100 = { gen_tps = 69.967, prefill_tps = 2081.79, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
+A100-80 = { gen_tps = 69.049, prefill_tps = 2730.99, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
 G4 = { gen_tps = 53.4, prefill_tps = 4018, date = "2026-10-13" }
+
+[[preset]]
+id = "qwen36-35b-a3b-strata-ud-q4-k-xl"
+engine = "strata"
+label = "Qwen3.6-35B-A3B Strata UD-Q4_K_XL (+vision)"
+repo = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF"
+file = "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
+alias = "qwen3.6-35b-a3b-ud-q4_k_xl"
+weights_gb = 22.853663008
+licence = "Apache-2.0"
+vision = true
+parallel = 1
+
+[preset.gpu.default]
+ctx = 8192
+kv = "f32"
+
+[preset.evidence.L4]
+status = "tested"
+message = """One fresh Colab L4 with Strata v0.2.15 and prebuilt CUDA engine 0.1.60. The 8K context default,
+fixed FP32 KV, embedded MTP and CPU vision were confirmed. A short streamed text request returned usage,
+and an image request identified both shapes. VM setup reached readiness in 4m 20s on this run."""
+
+[preset.measured]  # Benchmark history and method in docs/benchmarks/2026-11-19-colab-preset-matrix.md
+T4-HIGHMEM = { gen_tps = 53.335, prefill_tps = 760.3, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+L4 = { gen_tps = 65.41, prefill_tps = 1611.17, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
+A100 = { gen_tps = 135.078, prefill_tps = 6402.96, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
+A100-80 = { gen_tps = 139.787, prefill_tps = 6471.44, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }

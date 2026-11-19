@@ -108,10 +108,13 @@ unless it cannot run the model. The Models page shows the same verdicts, plus ea
 
 ## Strata
 
-The three Strata presets use the original
-[ISTA-DASLab GSQ-RCO weights](https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF). Strata is pinned
-to [v0.2.15](https://github.com/Niko1221/Strata/releases/tag/v0.2.15) at `c775728`. It needs an NVIDIA GPU,
-an AVX2 host CPU and driver 580+, and serves one sequence at a time.
+Strata is pinned to [v0.2.15](https://github.com/Niko1221/Strata/releases/tag/v0.2.15) at `c775728`.
+It needs an NVIDIA GPU, an AVX2 host CPU and driver 580+, and serves one sequence at a time.
+
+### Qwen3.8 Flash-Next
+
+The three Flash-Next presets use the original
+[ISTA-DASLab GSQ-RCO weights](https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF).
 
 - **Host RAM.** Strata keeps experts in host RAM and caches a subset in VRAM, so download size is not required
   VRAM. Upstream's normal-mode guidance is about 48/60/62 GiB of host RAM for IQ2_XS/IQ3_XXS/IQ3_S; smaller
@@ -149,6 +152,15 @@ Evidence is keyed to the exact class. The October 2026 Strata measurements used 
 uv run colabinet ctl create --name strata --gpu A100 \
   --preset qwen38-flash-next-strata-iq2-xs --idle 20 --cap 5
 ```
+
+### Qwen3.6-35B-A3B
+
+`qwen36-35b-a3b-strata-ud-q4-k-xl` uses the pinned
+[Unsloth MTP GGUF and projector](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d)
+and defaults to 8K context, FP32 KV and CPU vision. With vision it downloads 23.75 GB. The VM checks for at least
+32 GiB of host RAM and uses the upstream Qwen3.6 context fit check. Strata places experts automatically across VRAM
+and host RAM and reads MTP from the GGUF. The Nov. 19 Colab L4 smoke test verified the default configuration,
+streamed text with usage, and an image request through the CPU encoder.
 
 ## Vision requests
 
