@@ -62,7 +62,8 @@ class Preset:
 
     def defaults_for(self, gpu_class: str) -> GpuDefaults:
         generic = GpuDefaults(kv={"exllamav3": "FP16", "strata": "int8"}.get(self.engine, "f16"))
-        return self.gpu.get(gpu_class) or self.gpu.get(FALLBACK_CLASS.get(gpu_class, "")) or generic
+        return (self.gpu.get(gpu_class) or self.gpu.get(FALLBACK_CLASS.get(gpu_class, ""))
+                or self.gpu.get("default", generic))
 
 
 @dataclass(frozen=True)

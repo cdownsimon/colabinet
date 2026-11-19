@@ -132,23 +132,26 @@ spends no compute units; Control-C cleans everything up.
 
 ## Models and GPUs
 
-Presets live in [`presets.toml`](presets.toml): Qwen3.8-27B as llama.cpp GGUF and ExLlamaV3 EXL3 builds, and
-Qwen3.8-Flash-Next as a llama.cpp GGUF and three Strata quants, each in original or abliterated variants where
-available. Each preset sets per-GPU context and KV-cache defaults, and records speeds measured on real runtimes.
+Presets in [`presets.toml`](presets.toml) include Qwen3.8-27B as llama.cpp GGUF and ExLlamaV3 EXL3,
+Qwen3.8-Flash-Next as llama.cpp GGUF and three Strata quants, and Qwen3.6-35B-A3B as Strata UD-Q4_K_XL.
+Each preset sets per-GPU context and KV-cache defaults and records speeds measured on real runtimes.
 Any other Hugging Face model can be launched from New session; Models then offers a TOML snippet to save it as
 a preset.
 
-| GPU class | VRAM | host RAM | rate (CU/h) | good for |
+| GPU class | VRAM | host RAM | rate (CU/h) | generation speed |
 |---|---:|---:|---:|---|
-| CPU | — | 13.6 GB | 0.08 | testing the pipeline with tiny models |
-| T4 / T4-HIGHMEM | 16 GB | 13.6 / 54.8 GB | 1.07 / 1.27 | small models; 27B GGUF only with slow CPU offload |
-| L4 | 22.5 GB | 56.9 GB | 1.54 | 27B models (13–16 tok/s), Strata Flash-Next |
-| A100 / A100-80 | 40 / 80 GB | 89.6 / 179.4 GB | 5.30 / 6.77 | 27B models (~45 tok/s), Flash-Next |
-| G4 (RTX PRO 6000) | 96 GB | 189.9 GB | 8.90 | the fastest: 27B at ~70 tok/s, Flash-Next at 50–90 tok/s |
+| CPU | — | 13.6 GB | 0.08 | 27B UD-Q4_K_M at 0.028 tok/s in a four-token diagnostic |
+| T4 | 16 GB | 13.6 GB | 1.07 | 27B GGUF at 1.4–1.5 tok/s |
+| T4-HIGHMEM | 16 GB | 54.8 GB | 1.27 | 27B GGUF at 4.0–4.3 tok/s, Strata Flash-Next at 11.2–28.1 tok/s, Qwen3.6 at 53.3 tok/s |
+| L4 | 22.5 GB | 56.9 GB | 1.54 | 27B at 14.4–16.5 tok/s, Strata Flash-Next at 24.0–47.6 tok/s, Qwen3.6 at 65.4 tok/s |
+| A100 | 40 GB | 89.6 GB | 5.30 | 27B at 46.1–50.2 tok/s, Strata Flash-Next at 70.0–79.1 tok/s, Qwen3.6 at 135.1 tok/s |
+| A100-80 | 80 GB | 179.4 GB | 6.77 | 27B at 48.2–52.3 tok/s, Strata Flash-Next at 69.0–88.8 tok/s, Qwen3.6 at 139.8 tok/s |
+| G4 (RTX PRO 6000) | 96 GB | 189.9 GB | 8.90 | October 2026 figures for 27B (~70 tok/s) and Flash-Next (50–90 tok/s) |
 
-Rates and allocations vary by account and over time. See [engines and presets](docs/engines.md) for the
-`presets.toml` format, how GPU suitability is decided and engine-specific options, and the
-[benchmarks](docs/benchmarks/) for the measurements.
+The November 19, 2026 sweep measured generation and prefill on Colab. The
+[live Colab preset matrix](docs/benchmarks/2026-11-19-colab-preset-matrix.md) has both speeds for each preset,
+including the llama.cpp Flash-Next results. Rates and allocations vary by account and over time.
+See [engines and presets](docs/engines.md) for the preset format, fit rules and engine options.
 
 ## Safety, cost and privacy
 

@@ -27,6 +27,9 @@ DATA = ROOT / "strata-data"
 EVENTS = E("EVENTS", str(ROOT / "setup.jsonl"))
 ENGINE_LOG = E("ENGINE_LOG", str(ROOT / "engine.log"))
 REPO = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
+QWEN36_REPO = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF"
+QWEN36_QUANT = "UD-Q4_K_XL"
+QWEN36_FILE = f"Qwen3.6-35B-A3B-{QWEN36_QUANT}.gguf"
 # v0.2.15's release feed reuses this portable CUDA 13 build from v0.2.14.
 ENGINE_VERSION = "0.1.60"
 ENGINE_URL = ("https://github.com/Niko1221/Strata/releases/download/v0.2.14/"
@@ -162,7 +165,7 @@ def select_drafting(requested, choice_of, quant, gpu, args):
     return selected
 
 
-def check_hardware(upstream, quant, ctx, low_ram, choose_drafting):
+def check_hardware(upstream, quant, ctx, low_ram, choose_drafting, family="qwen"):
     """Use the pinned upstream's GPU, CPU and low-RAM policies before installing/downloading anything large."""
     gpu = upstream.gpu_info()
     if not gpu:
@@ -176,6 +179,17 @@ def check_hardware(upstream, quant, ctx, low_ram, choose_drafting):
     if not avx2:
         raise RuntimeError(f"Strata requires an AVX2 CPU; detected {cpu}")
     ram = upstream.ram_gb()
+    if family == "qwen36":
+        model = upstream.OWN_PATH_FAMILIES[family]
+        required = model["models"][quant]["ram_gb"]
+        if ram < required:
+            raise RuntimeError(f"Strata Qwen3.6 {quant} requires {required} GiB host RAM; detected {ram:.1f} GiB")
+        warning = upstream.own_path_context_warning(model, quant, gpu["vram_gb"], ctx)
+        if warning:
+            raise RuntimeError(warning)
+        event("gpu_info", nvidia_smi=f"{gpu['name']}, {gpu['vram_gb'] * 1024:.0f}, {gpu['driver']}",
+              ram_gb=round(ram, 1), low_ram=False)
+        return False, gpu, "mtp"
     drafting = choose_drafting(gpu)
     if low_ram not in ("auto", "on", "off"):
         raise ValueError("Strata low-RAM mode must be auto, on or off")
@@ -211,7 +225,8 @@ def prepare(env):
     args = ["--max-context", env["STRATA_CTX"], "--kv", env["STRATA_KV"],
             *json.loads(env["STRATA_EXTRA_ARGS"])]
     low_ram, gpu, drafting = check_hardware(upstream, quant, int(env["STRATA_CTX"]), env["STRATA_LOW_RAM"],
-                                           lambda gpu: select_drafting(requested, choice_of, quant, gpu, args))
+                                           lambda gpu: select_drafting(requested, choice_of, quant, gpu, args),
+                                           env["STRATA_FAMILY"])
     env["STRATA_DRAFTING"] = drafting
     event("drafting_selected", requested=requested, selected=drafting)
     check_storage(upstream, env, low_ram)
@@ -247,6 +262,12 @@ def dir_bytes(path):
 
 def model_artifacts(env):
     models = DATA / "models"
+    if env.get("STRATA_FAMILY") == "qwen36":
+        folder = models / f"qwen36-{QWEN36_QUANT}"
+        files = [folder / QWEN36_FILE]
+        if env["STRATA_VISION"] != "none":
+            files.append(folder / "mmproj-F16.gguf")
+        return files
     first = models / env["STRATA_FILE"]
     second = first.with_name(first.name.replace("-00001-of-00002.gguf", "-00002-of-00002.gguf"))
     files = [first, second]
@@ -273,10 +294,15 @@ def check_storage(upstream, env, low_ram):
     DATA.mkdir(parents=True, exist_ok=True)
     quant = env["STRATA_QUANT"]
     artifacts = model_artifacts(env)
-    model_gb = 0 if all(finished_file(path) for path in artifacts[:2]) else upstream.MODELS[quant]["download_gb"]
-    vision_gb = 1 if len(artifacts) == 3 and not finished_file(artifacts[2]) else 0
-    pack_gb = upstream.MODELS[quant]["arena_gb"] + 1 if low_ram and not pack_complete(quant, True) else 0
-    needed = model_gb + vision_gb + pack_gb + 8
+    if env.get("STRATA_FAMILY") == "qwen36":
+        pins = upstream.OWN_PATH_FAMILIES["qwen36"]["sha256"]
+        needed = sum(pins[path.name][0] / 1e9 for path in artifacts
+                     if not finished_file(path) or path.stat().st_size != pins[path.name][0]) + 8
+    else:
+        model_gb = 0 if all(finished_file(path) for path in artifacts[:2]) else upstream.MODELS[quant]["download_gb"]
+        vision_gb = 1 if len(artifacts) == 3 and not finished_file(artifacts[2]) else 0
+        pack_gb = upstream.MODELS[quant]["arena_gb"] + 1 if low_ram and not pack_complete(quant, True) else 0
+        needed = model_gb + vision_gb + pack_gb + 8
     free = shutil.disk_usage(DATA).free / 1e9
     if free < needed:
         raise RuntimeError(
@@ -295,7 +321,7 @@ def probe_prebuilt(engine, env, cancel):
     if meta.get("version") != ENGINE_VERSION:
         raise RuntimeError(f"Strata package has unexpected engine version {meta.get('version')}")
     executables = [engine / "strata"]
-    if env["STRATA_VISION"] == "gpu":
+    if env["STRATA_VISION"] != "none":
         executables.append(engine / "strata-vision")
     libs = os.pathsep.join(filter(None, (str(engine), env.get("LD_LIBRARY_PATH"))))
     probe_env = {**env, "LD_LIBRARY_PATH": libs}
@@ -306,8 +332,9 @@ def probe_prebuilt(engine, env, cancel):
         if "not found" in output:
             raise RuntimeError(f"Strata package cannot load the libraries for {executable.name}")
     output = run([str(executables[0]), "--families"], env=probe_env, timeout=30, cancel=cancel, label="engine")
-    if "qwen4exp" not in output:
-        raise RuntimeError("Strata package does not advertise Qwen3.8 Flash-Next support")
+    arch = "qwen35moe" if env.get("STRATA_FAMILY") == "qwen36" else "qwen4exp"
+    if arch not in output.split():
+        raise RuntimeError(f"Strata package does not advertise {arch} support")
 
 
 def install_prebuilt(engine, env, cancel):
@@ -354,8 +381,10 @@ def build_engine(python, env, gpu, cancel):
     if (engine / ENGINE_PACKAGE_MARKER).exists():
         shutil.rmtree(engine)
     before = stamp.stat().st_mtime_ns if stamp.exists() else None
+    # CUDA-capable vision also runs on the CPU and can be reused when switching back to GPU vision.
+    build_vision = "gpu" if env["STRATA_VISION"] == "cpu" else env["STRATA_VISION"]
     run([python, "-u", "-c", "import setup as S; "
-         "S.build_engine(S.gpu_info(), " + repr(env["STRATA_VISION"]) + ", True, S.llama_override())"],
+         "S.build_engine(S.gpu_info(), " + repr(build_vision) + ", True, S.llama_override())"],
         cwd=SOURCE, env=env, timeout=float(env.get("INSTALL_TIMEOUT", "3600")), cancel=cancel, label="engine")
     after = stamp.stat().st_mtime_ns if stamp.exists() else None
     return {"seconds": round(time.monotonic() - started, 1), "skipped": before is not None and before == after,
@@ -589,22 +618,30 @@ def argument(args, flag, default=None):
 def configure(config, env):
     """Check upstream choices and apply only settings upstream's CLI cannot express."""
     args = config["args"]
+    qwen36 = env.get("STRATA_FAMILY") == "qwen36"
     if int(argument(args, "--max-context", "0")) != int(env["STRATA_CTX"]):
         raise RuntimeError("Strata setup changed the requested context; refusing silently clamped configuration")
-    # setup omits --kv below 8K, but the engine supports all three KV formats at every context length.
-    if "--kv" in args:
+    if qwen36:
+        if config.get("arch") != "qwen35moe" or "--kv" in args or argument(args, "--mtp") != "2":
+            raise RuntimeError("Strata setup did not retain the Qwen3.6 loader with fixed FP32 KV and embedded MTP")
+    elif "--kv" in args:
         if argument(args, "--kv") != env["STRATA_KV"]:
             raise RuntimeError("Strata setup changed the requested KV format")
     else:
+        # Flash-Next setup can omit --kv at a small context.
         args += ["--kv", env["STRATA_KV"]]
     native = Path(argument(args, "--native", ""))
-    if native.name != Path(env["STRATA_FILE"]).name:
-        raise RuntimeError("Strata setup selected a different model shard")
-    wants_vision = env["STRATA_VISION"] == "gpu"
-    if wants_vision:
-        if config.get("vision", {}).get("gpu") is not True or "--vision" not in args:
-            raise RuntimeError("Strata setup did not enable the requested GPU vision encoder")
-    elif config.get("vision") or "--vision" in args:
+    if native.name != Path(env["STRATA_FILE"]).name or (qwen36 and native != model_artifacts(env)[0]):
+        raise RuntimeError("Strata setup selected a different model file")
+    vision = env["STRATA_VISION"]
+    vision_config = config.get("vision") or {}
+    if vision != "none":
+        if vision_config.get("gpu") is not (vision == "gpu") or "--vision" not in args:
+            raise RuntimeError(f"Strata setup did not enable the requested {vision.upper()} vision encoder")
+        if qwen36 and (vision_config.get("model") != str(native)
+                       or vision_config.get("mmproj") != str(model_artifacts(env)[1])):
+            raise RuntimeError("Strata setup selected a different Qwen3.6 vision model or projector")
+    elif vision_config or "--vision" in args:
         raise RuntimeError("Strata setup retained vision while vision was disabled")
     projection = env["STRATA_PROJECTION"] == "on"
     loaded = "--control-vector-scaled" in args
@@ -615,8 +652,10 @@ def configure(config, env):
         if (layer < 0 or args[layer + 1:layer + 3] != ["4", "44"] or argument(args, "--cvec-mode") != "project"
                 or argument(args, "--cvec-dir") != "per-layer"):
             raise RuntimeError("Strata setup did not use the bundled per-layer projection profile")
-    # Direct PLE I/O is the safe default on low-RAM Colab machines; explicit --ple-io overrides remain effective.
-    args += ["--ple-io", "direct", *json.loads(env.get("STRATA_EXTRA_ARGS", "[]"))]
+    if not qwen36:
+        # Direct PLE I/O is the safe default on low-RAM Colab machines.
+        args += ["--ple-io", "direct"]
+    args += json.loads(env.get("STRATA_EXTRA_ARGS", "[]"))
     drafting = env["STRATA_DRAFTING"]
     if ("--mtp" in args) != (drafting == "mtp"):
         raise RuntimeError("Strata setup did not honor the requested MTP layer setting")
@@ -634,10 +673,13 @@ def configure(config, env):
 
 
 def finalize_model(python, env, low_ram, engine_source):
-    """Let pinned upstream verify the completed branches and write the authoritative launch configuration."""
+    """Let pinned upstream prepare or verify the model and write its launch configuration."""
     started = time.monotonic()
+    family = env.get("STRATA_FAMILY", "qwen")
+    qwen36 = family == "qwen36"
     quant = env["STRATA_QUANT"]
-    path = SOURCE / f"strata-{quant.lower()}.json"
+    tag = f"qwen36-{quant.lower()}" if qwen36 else quant.lower()
+    path = SOURCE / f"strata-{tag}.json"
     path.unlink(missing_ok=True)
     path.with_suffix(".shared-settings.json").unlink(missing_ok=True)
     mtp = env["STRATA_DRAFTING"] == "mtp"
@@ -645,19 +687,26 @@ def finalize_model(python, env, low_ram, engine_source):
     if engine_source == "prebuilt":
         # The checked portable package ships its CUDA libs. Upstream's zip installer normally gets them from pip.
         script += "S.pip_cuda_libs = lambda *args: None\n"
+        # Qwen3.6 upstream also probes --families while generating the config.
+        libs = os.pathsep.join(filter(None, (str(SOURCE / "engine"), env.get("LD_LIBRARY_PATH"))))
+        env = {**env, "LD_LIBRARY_PATH": libs}
     if not mtp:
         # v0.2.15 otherwise repairs a cached MTP layer even when --mtp off was explicit.
         script += "S.mtp_corrupt = lambda *args: False\nS.refresh_draft_vocab = lambda *args: None\n"
     script += "raise SystemExit(S.main())\n"
     engine_args = ["--prebuilt", "", "--cuda", "13"] if engine_source == "prebuilt" else ["--build"]
-    run([python, "-u", "-c", script, "--family", "qwen", "--model", quant,
-         "--context", env["STRATA_CTX"], "--kv", env["STRATA_KV"], "--vision", env["STRATA_VISION"],
-         "--experimental-speed-projection", env["STRATA_PROJECTION"], "--low-ram", "mmap" if low_ram else "off",
-         "--mtp", "on" if mtp else "off", "--parallel", "1", "--port", env["STRATA_PORT"],
+    flash_next = [] if qwen36 else ["--kv", env["STRATA_KV"],
+                                    "--experimental-speed-projection", env["STRATA_PROJECTION"],
+                                    "--low-ram", "mmap" if low_ram else "off", "--mtp", "on" if mtp else "off"]
+    run([python, "-u", "-c", script, "--family", family, "--model", quant,
+         "--context", env["STRATA_CTX"], "--vision", env["STRATA_VISION"], *flash_next,
+         "--parallel", "1", "--port", env["STRATA_PORT"],
          "--host", "127.0.0.1", "--data-dir", str(DATA), *engine_args, "--yes", "--no-start"],
         cwd=SOURCE, env=env, timeout=float(env.get("FINALIZE_TIMEOUT", "1800")), label="finalize")
-    shards = model_artifacts(env)[:2]
-    if any(not path.is_file() for path in shards):
+    artifacts = model_artifacts(env)
+    if qwen36 and not all(finished_file(artifact) for artifact in artifacts):
+        raise RuntimeError("Strata setup did not retain the verified Qwen3.6 model files")
+    if not qwen36 and any(not shard.is_file() for shard in artifacts[:2]):
         raise RuntimeError("Strata setup did not retain both official GGUF shards")
     config = configure(json.loads(path.read_text()), env)
     if engine_source == "prebuilt":
@@ -688,16 +737,18 @@ def confirm_capabilities(health, models, env, metrics):
     if (not model or model.get("status", {}).get("value") == "unloaded"
             or model.get("meta", {}).get("n_ctx") != int(env["STRATA_CTX"])):
         raise RuntimeError("Strata model metadata did not confirm the requested loaded model/context")
-    wants_vision = env["STRATA_VISION"] == "gpu"
+    wants_vision = env["STRATA_VISION"] != "none"
     images = "image" in model.get("architecture", {}).get("input_modalities", [])
     if health.get("images") is not wants_vision or images != wants_vision:
         raise RuntimeError("Strata health/model metadata did not confirm the requested vision capability")
     engine = metrics.get("engine", {})
-    if engine.get("kv") != env["STRATA_KV"]:
-        raise RuntimeError("Strata engine did not confirm the requested loaded KV format")
-    expected = "project:4-44" if env["STRATA_PROJECTION"] == "on" else "0"
-    if str(engine.get("cvec")) != expected:
-        raise RuntimeError("Strata engine did not confirm the requested refusal projection profile")
+    # Qwen3.6 has fixed FP32 KV and no projection. Its native READY protocol omits those metrics.
+    if env.get("STRATA_FAMILY") != "qwen36":
+        if engine.get("kv") != env["STRATA_KV"]:
+            raise RuntimeError("Strata engine did not confirm the requested loaded KV format")
+        expected = "project:4-44" if env["STRATA_PROJECTION"] == "on" else "0"
+        if str(engine.get("cvec")) != expected:
+            raise RuntimeError("Strata engine did not confirm the requested refusal projection profile")
     if engine.get("drafting") != env["STRATA_DRAFTING"]:
         raise RuntimeError(f"Strata loaded drafting mode {engine.get('drafting')!r}; "
                            f"expected {env['STRATA_DRAFTING']}: {engine.get('drafting_note', '')}")
@@ -796,11 +847,19 @@ def serve(python, path, config, env):
 def main():
     ROOT.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
-    if env["STRATA_REPO"] != REPO or env["STRATA_QUANT"] not in ("IQ2_XS", "IQ3_XXS", "IQ3_S"):
-        raise ValueError("Strata requires the original official repository and supported IQ quant")
     quant = env["STRATA_QUANT"]
-    if env["STRATA_FILE"] != f"{quant}/Qwen3.8-Flash-Next-GSQ-RCO-{quant}-00001-of-00002.gguf":
-        raise ValueError("Strata requires the exact official first-shard path")
+    family = env.setdefault("STRATA_FAMILY", "qwen")
+    if family == "qwen36":
+        if (env["STRATA_REPO"], env["STRATA_FILE"], quant) != (QWEN36_REPO, QWEN36_FILE, QWEN36_QUANT):
+            raise ValueError("Strata Qwen3.6 requires the pinned UD-Q4_K_XL MTP GGUF")
+        if (env["STRATA_KV"], env["STRATA_DRAFTING"], env["STRATA_LOW_RAM"], env["STRATA_PROJECTION"]) != (
+                "f32", "mtp", "auto", "off") or env["STRATA_VISION"] not in ("cpu", "none"):
+            raise ValueError("Strata Qwen3.6 uses fixed FP32 KV, embedded MTP, and optional CPU vision")
+    else:
+        if family != "qwen" or env["STRATA_REPO"] != REPO or quant not in ("IQ2_XS", "IQ3_XXS", "IQ3_S"):
+            raise ValueError("Strata requires the original official repository and supported IQ quant")
+        if env["STRATA_FILE"] != f"{quant}/Qwen3.8-Flash-Next-GSQ-RCO-{quant}-00001-of-00002.gguf":
+            raise ValueError("Strata requires the exact official first-shard path")
     if not stop_engines(env["STRATA_PORT"]):
         raise RuntimeError(f"port {env['STRATA_PORT']} is still busy after stopping all engines")
     # Isolate upstream's persistent setup choices, and clear request auth inherited from Colab exec.
@@ -810,8 +869,20 @@ def main():
     env.update(HF_HUB_DISABLE_XET="1", HF_HUB_DISABLE_PROGRESS_BARS="1",
                XDG_CONFIG_HOME=str(ROOT / "strata-settings"))
     python, low_ram, gpu, install_started = prepare(env)
-    branches = parallel_setup(python, env, low_ram, gpu, install_started)
-    path, config = finalize_model(python, env, low_ram, branches["engine"]["source"])
+    if family == "qwen36":
+        result = build_engine(python, env, gpu, threading.Event())
+        event("install_done", engine="strata", release=env["STRATA_RELEASE"],
+              seconds=round(time.monotonic() - install_started, 1), skipped=result["skipped"], source=result["source"])
+        started = time.monotonic()
+        model_files = model_artifacts(env)
+        skipped = all(finished_file(artifact) for artifact in model_files)
+        path, config = finalize_model(python, env, low_ram, result["source"])
+        event("download_done", file=env["STRATA_FILE"], gb=round(model_files[0].stat().st_size / 1e9, 2),
+              seconds=round(time.monotonic() - started, 1), skipped=skipped)
+        event("drafting_done", mode="mtp", seconds=0, skipped=True, download_bytes=0)
+    else:
+        branches = parallel_setup(python, env, low_ram, gpu, install_started)
+        path, config = finalize_model(python, env, low_ram, branches["engine"]["source"])
     serve(python, path, config, env)
 
 

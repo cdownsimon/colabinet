@@ -4,8 +4,10 @@
 {% block crumbs %}<h1>New session</h1><span class="cb-page-note">Nothing is billed until you confirm.</span>{% endblock %}
 {% block content %}
 {% set custom = preset == 'custom' %}
+{% set picked = presets | selectattr('id', 'equalto', preset) | first | default(none) %}
+{% set qwen36 = picked and picked.engine == 'strata' and picked.repo == qwen36_repo %}
 {% if preset_error %}<div class="alert" data-variant="destructive">{{ icon('alert') }}<h2>presets.toml has an error</h2><section><p>{{ preset_error }}</p></section></div>{% endif %}
-<form id="new-form" class="form cb-new" data-engine="{{ engine }}" novalidate hx-post="/ui/new/estimate" hx-trigger="load, change, input delay:400ms" hx-target="#estimate" hx-swap="innerHTML">
+<form id="new-form" class="form cb-new" data-engine="{{ engine }}" data-qwen36="{{ 'true' if qwen36 else 'false' }}" data-qwen36-repo="{{ qwen36_repo }}" novalidate hx-post="/ui/new/estimate" hx-trigger="load, change, input delay:400ms" hx-target="#estimate" hx-swap="innerHTML">
   <section class="card">
     <header><h2 class="cb-card-title" aria-label="Step 1 · GPU"><span class="cb-step-num" aria-hidden="true">1</span>GPU</h2><p>Rate per hour in compute units. Greyed-out classes cannot run the chosen model and settings. The real GPU is checked after create.</p></header>
     <section>
@@ -28,13 +30,13 @@
     <section class="cb-form-grid">
       <div class="field cb-span-2"><label class="label" for="preset">Model</label>
         <select class="select" id="preset" name="preset" onchange="cbPresetChanged(this)">
-          {% for model_preset in presets %}<option value="{{ model_preset.id }}" data-engine="{{ model_preset.engine }}" {% if model_preset.id == preset %}selected{% endif %}>{{ model_preset.label }} · {{ model_preset.engine }}</option>{% endfor %}
+          {% for model_preset in presets %}<option value="{{ model_preset.id }}" data-engine="{{ model_preset.engine }}" data-qwen36="{{ 'true' if model_preset.repo == qwen36_repo else 'false' }}" {% if model_preset.id == preset %}selected{% endif %}>{{ model_preset.label }} · {{ model_preset.engine }}</option>{% endfor %}
           <option value="custom" {% if preset == 'custom' %}selected{% endif %}>Custom Hugging Face model…</option>
         </select></div>
       <div class="field cb-custom" {% if not custom %}hidden{% endif %}><label class="label" for="engine">Engine</label>
-        <select class="select" id="engine" name="engine" onchange="cbPresetChanged(document.getElementById('preset'))" {% if not custom %}disabled{% endif %}><option value="llamacpp" {% if engine == 'llamacpp' %}selected{% endif %}>llama.cpp (GGUF)</option><option value="exllamav3" {% if engine == 'exllamav3' %}selected{% endif %}>ExLlamaV3 (EXL3)</option><option value="strata" {% if engine == 'strata' %}selected{% endif %}>Strata (Qwen3.8 Flash Next GGUF)</option></select></div>
-      <div class="field cb-custom" {% if not custom %}hidden{% endif %}><label class="label" for="repo">Repo</label><input class="input" id="repo" name="repo" placeholder="org/model" {% if not custom %}disabled{% endif %}></div>
-      <div class="field cb-custom" data-engine-field="llamacpp strata" {% if not custom or engine not in ('llamacpp', 'strata') %}hidden{% endif %}><label class="label" for="file">GGUF file (first shard for Strata)</label><input class="input" id="file" name="file" placeholder="model-Q4_K_M.gguf" {% if not custom or engine not in ('llamacpp', 'strata') %}disabled{% endif %}></div>
+        <select class="select" id="engine" name="engine" onchange="cbPresetChanged(document.getElementById('preset'))" {% if not custom %}disabled{% endif %}><option value="llamacpp" {% if engine == 'llamacpp' %}selected{% endif %}>llama.cpp (GGUF)</option><option value="exllamav3" {% if engine == 'exllamav3' %}selected{% endif %}>ExLlamaV3 (EXL3)</option><option value="strata" {% if engine == 'strata' %}selected{% endif %}>Strata (Qwen GGUF)</option></select></div>
+      <div class="field cb-custom" {% if not custom %}hidden{% endif %}><label class="label" for="repo">Repo</label><input class="input" id="repo" name="repo" placeholder="org/model" onchange="cbPresetChanged(document.getElementById('preset'))" {% if not custom %}disabled{% endif %}></div>
+      <div class="field cb-custom" data-engine-field="llamacpp strata" {% if not custom or engine not in ('llamacpp', 'strata') %}hidden{% endif %}><label class="label" for="file">GGUF file (first shard if split)</label><input class="input" id="file" name="file" placeholder="model-Q4_K_M.gguf" {% if not custom or engine not in ('llamacpp', 'strata') %}disabled{% endif %}></div>
       <div class="field cb-custom" data-engine-field="exllamav3" {% if not custom or engine != 'exllamav3' %}hidden{% endif %}><label class="label" for="revision">EXL3 revision</label><input class="input" id="revision" name="revision" placeholder="4.00bpw" {% if not custom or engine != 'exllamav3' %}disabled{% endif %}></div>
       <div class="field cb-custom" {% if not custom %}hidden{% endif %}><label class="label" for="alias">Model id for clients</label><input class="input" id="alias" name="alias" placeholder="my-model" {% if not custom %}disabled{% endif %}></div>
     </section>
@@ -48,11 +50,11 @@
           <div class="field"><label class="label" for="name">Name</label><input class="input" id="name" name="name" required pattern="[A-Za-z0-9_-]+" placeholder="llm"><p class="cb-muted">Letters, digits, - and _</p></div>
           <div class="field"><label class="label" for="ctx">Context</label><input class="input" id="ctx" name="ctx" type="number" min="512" step="256"></div>
           <div class="field"><label class="label" for="parallel">Parallel slots</label><input class="input" id="parallel" name="parallel" type="number" min="1" placeholder="preset default"></div>
-          <div class="field"><label class="label" for="kv">KV cache</label><input class="input" id="kv" name="kv" list="kv-types-{{ engine }}" placeholder="preset default"><datalist id="kv-types-llamacpp"><option>f16</option><option>q8_0</option><option>q4_0</option></datalist><datalist id="kv-types-exllamav3"><option>FP16</option><option>Q8</option><option>Q6</option><option>Q4</option><option>8,8</option></datalist><datalist id="kv-types-strata"><option>int8</option><option>q4_0</option><option>k8v4</option></datalist></div>
-          <div class="field cb-span-4"><label class="label" for="extra_args">Extra engine args</label><input class="input cb-mono" id="extra_args" name="extra_args" placeholder="{{ 'model.chunk_size=4096' if engine == 'exllamav3' else '--ple-io direct' if engine == 'strata' else '--reasoning-budget 4096' }}"></div>
-          <div class="field cb-span-4" id="projection-field" {% if engine != 'strata' %}hidden{% endif %}>
-            <label class="label" for="refusal_projection">Experimental refusal projection (Strata only)</label>
-            <select class="select" id="refusal_projection" name="refusal_projection" {% if engine != 'strata' %}disabled{% endif %}><option value="">Preset default (off for built-in presets)</option><option value="false">Off</option><option value="true">On — experimental</option></select>
+          <div class="field"><label class="label" for="kv">KV cache</label><input class="input" id="kv" name="kv" list="kv-types-{{ engine }}" placeholder="{{ 'f32 (fixed)' if qwen36 else 'preset default' }}" {% if qwen36 %}disabled{% endif %}><datalist id="kv-types-llamacpp"><option>f16</option><option>q8_0</option><option>q4_0</option></datalist><datalist id="kv-types-exllamav3"><option>FP16</option><option>Q8</option><option>Q6</option><option>Q4</option><option>8,8</option></datalist><datalist id="kv-types-strata"><option>int8</option><option>q4_0</option><option>k8v4</option></datalist></div>
+          <div class="field cb-span-4"><label class="label" for="extra_args">Extra engine args</label><input class="input cb-mono" id="extra_args" name="extra_args" placeholder="{{ '' if qwen36 else 'model.chunk_size=4096' if engine == 'exllamav3' else '--ple-io direct' if engine == 'strata' else '--reasoning-budget 4096' }}"></div>
+          <div class="field cb-span-4" id="projection-field" {% if engine != 'strata' or qwen36 %}hidden{% endif %}>
+            <label class="label" for="refusal_projection">Experimental refusal projection (Flash-Next)</label>
+            <select class="select" id="refusal_projection" name="refusal_projection" {% if engine != 'strata' or qwen36 %}disabled{% endif %}><option value="">Preset default (off for built-in presets)</option><option value="false">Off</option><option value="true">On — experimental</option></select>
             <p class="cb-muted">Reduces refusals and changes model behavior; it does not guarantee an uncensored model. Strata enables GPU vision and serves one sequence at a time.</p>
           </div>
         </div>

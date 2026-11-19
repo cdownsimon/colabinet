@@ -92,6 +92,14 @@ def test_strata_low_ram_args_decide_whether_iq3_fits_an_l4():
     assert "--low-ram on" in auto["message"]
 
 
+def test_qwen36_uses_its_host_ram_limit_and_fixed_cache_in_fit():
+    fit = fits("qwen36-35b-a3b-strata-ud-q4-k-xl")
+    assert {gpu for gpu, result in fit.items() if result["status"] == "blocked"} == {"CPU", "T4"}
+    assert fit["L4"]["label"] == "GPU tested"
+    assert (fit["L4"]["ctx"], fit["L4"]["kv"]) == (8192, "f32")
+    assert "CPU vision" in fit["L4"]["message"]
+
+
 def test_custom_models_are_only_blocked_where_their_engine_or_known_size_rules_them_out():
     unknown = session_fit("exllamav3", None, list(GPU_CLASSES), SYSTEM_RAM_GB)
     assert unknown["CPU"]["status"] == "blocked" and unknown["T4"]["label"] == "Size unknown"

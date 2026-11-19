@@ -83,10 +83,13 @@ def _when(timestamp: float | None) -> str:
 
 
 def make_templates() -> Jinja2Templates:
+    from ..engines.strata import QWEN36_REPO
+
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
     env = templates.env
     env.filters.update(ago=_ago, dur=_dur, num=_num, when=_when, day=views.now_str, tojson_attr=json.dumps)
     env.globals.update(gpu_classes=GPU_CLASSES, vram=VRAM_GB, state_variant=views.state_variant)
+    env.globals["qwen36_repo"] = QWEN36_REPO
     return templates
 
 

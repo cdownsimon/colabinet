@@ -14,7 +14,7 @@ from types import SimpleNamespace
 import pytest
 
 from colabinet.engines.base import VM_DIR, RunSpec
-from colabinet.engines.strata import FILES, RELEASE, REPO, StrataEngine, validate_spec
+from colabinet.engines.strata import FILES, QWEN36_FILE, QWEN36_REPO, RELEASE, REPO, StrataEngine, validate_spec
 
 module_spec = importlib.util.spec_from_file_location("setup_strata", VM_DIR / "setup_strata.py")
 vm = importlib.util.module_from_spec(module_spec)
@@ -81,6 +81,66 @@ def config(vision=True, projection=False, ctx=131072):
 
 def runtime_env(**changes):
     return StrataEngine().setup_env(spec(**changes), 8090, 1)
+
+
+def qwen36_env():
+    return runtime_env(repo=QWEN36_REPO, file=QWEN36_FILE, ctx=8192, kv="f32", alias="qwen36")
+
+
+@pytest.mark.parametrize("override, message", [
+    ({"file": "Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf"}, "pinned"),
+    ({"kv": "int8"}, "fixed FP32"),
+    ({"refusal_projection": True}, "projection"),
+    ({"extra_args": ("--drafting", "off")}, "embedded MTP"),
+    ({"extra_args": ("--ple-io", "ram")}, "expert placement"),
+    ({"extra_args": ("--batch", "2")}, "single-request"),
+])
+def test_qwen36_rejects_unsupported_model_or_runtime_settings(override, message):
+    model = {"repo": QWEN36_REPO, "file": QWEN36_FILE, "kv": "f32"}
+    with pytest.raises(ValueError, match=message):
+        validate_spec(spec(**(model | override)))
+
+
+def test_qwen36_finalization_and_readiness_use_family_config(tmp_path, monkeypatch):
+    monkeypatch.setattr(vm, "SOURCE", tmp_path)
+    monkeypatch.setattr(vm, "DATA", tmp_path / "data")
+    monkeypatch.setattr(vm, "event", lambda *a, **kw: None)
+    env = qwen36_env()
+    model, projector = vm.model_artifacts(env)
+    model.parent.mkdir(parents=True)
+    for artifact in (model, projector):
+        artifact.touch()
+        artifact.write_bytes(b"gguf")
+        artifact.with_name(artifact.name + ".done").touch()
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    (engine / "BUILD.json").write_text(json.dumps({"version": vm.ENGINE_VERSION}))
+    path = tmp_path / "strata-qwen36-ud-q4_k_xl.json"
+
+    def finalize(cmd, **kwargs):
+        assert vm.argument(cmd, "--family") == "qwen36"
+        assert vm.argument(cmd, "--model") == "UD-Q4_K_XL"
+        assert vm.argument(cmd, "--vision") == "cpu"
+        assert vm.argument(cmd, "--context") == "8192"
+        assert all(flag not in cmd for flag in ("--mtp", "--kv", "--low-ram", "--experimental-speed-projection"))
+        assert kwargs["env"]["LD_LIBRARY_PATH"].split(vm.os.pathsep)[0] == str(engine)
+        path.write_text(json.dumps({
+            "exe": str(engine / "strata"), "arch": "qwen35moe",
+            "args": ["--native", str(model), "--max-context", "8192", "--mtp", "2", "--vision"],
+            "vision": {"gpu": False, "mmproj": str(projector), "model": str(model)},
+        }))
+
+    monkeypatch.setattr(vm, "run", finalize)
+    config_path, cfg = vm.finalize_model("python", env, False, "prebuilt")
+    assert config_path == path and cfg["model_name"] == "qwen36"
+    assert cfg["drafting"] == "mtp" and "--ple-io" not in cfg["args"] and "--kv" not in cfg["args"]
+    health = {"status": "ok", "model": "qwen36", "max_context": 8192, "images": True, "loaded": True}
+    metadata = {"data": [{"id": "qwen36", "meta": {"n_ctx": 8192},
+                          "architecture": {"input_modalities": ["text", "image"]}}]}
+    metrics = {"engine": {"drafting": "mtp"}}
+    assert vm.confirm_capabilities(health, metadata, env, metrics) == {"vision": True}
+    with pytest.raises(RuntimeError, match="drafting mode"):
+        vm.confirm_capabilities(health, metadata, env, {"engine": {"drafting": "off"}})
 
 
 def test_low_context_retains_requested_quantized_kv():
@@ -414,6 +474,18 @@ def test_cancelled_prebuilt_download_stops_without_building(prebuilt_archive, mo
         vm.build_engine("python", runtime_env(), gpu, cancel)
     assert not (vm.SOURCE / "engine").exists()
     assert not list(vm.SOURCE.glob(".engine-install-*"))
+
+
+def test_qwen36_source_build_installs_a_reader_reusable_for_gpu_vision(tmp_path, monkeypatch):
+    monkeypatch.setattr(vm, "SOURCE", tmp_path)
+    monkeypatch.setattr(vm, "prebuilt_supported", lambda gpu: False)
+    monkeypatch.setattr(vm, "event", lambda *a, **kw: None)
+    commands = []
+    monkeypatch.setattr(vm, "run", lambda cmd, **kw: commands.append(cmd))
+    gpu = {"name": "A100", "driver": "580.82.07"}
+    result = vm.build_engine("python", qwen36_env(), gpu, threading.Event())
+    assert result["source"] == "source"
+    assert "S.build_engine(S.gpu_info(), 'gpu'," in commands[0][-1]
 
 
 @pytest.mark.parametrize("available, message", [(0, "available host RAM"), (999999, "remain cached")])
