@@ -465,23 +465,23 @@ async def test_measured_speeds_show_on_gpu_choices_review_and_models(console):
     _, client, _ = console
     page = (await client.get("/new?preset=qwen38-27b-abl-q4k")).text
     speeds = dict(re.findall(r'name="gpu" value="([A-Za-z0-9-]+)".*?class="cb-gpu-speed"[^>]*>([^<]*)<', page, re.S))
-    assert speeds["L4"] == "13.1 tok/s measured" and speeds["A100"] == "43.0 tok/s measured"
-    assert speeds["CPU"] == ""  # killed for memory: nothing measured, and greyed out
+    assert speeds["L4"] == "14.4 tok/s measured" and speeds["A100"] == "46.1 tok/s measured"
+    assert speeds["CPU"] == ""  # No measurement for this preset on CPU.
     response = await client.post("/ui/new/estimate", headers={"X-CSRF-Token": CSRF},
                                  data={"preset": "qwen38-27b-abl-q4k", "gpu": "L4"})
     assert "<dt>Measured</dt>" in response.text
-    assert ("<strong>13.1 tok/s</strong> generation, 660 tok/s prefill on a 4K-token prompt, on L4 at the "
-            "preset's defaults (2026-10-13)") in response.text
+    assert ("<strong>14.4 tok/s</strong> generation, 808 tok/s prefill on a 4K-token prompt, on L4 at the "
+            "preset's defaults (2026-11-19). 3 warmed requests, b12359.") in response.text
     marker = re.search(r'id="gpu-fit" hidden data-fit="([^"]*)"', response.text)
     fit = json.loads(html.unescape(marker.group(1)))
     assert fit["G4"]["measured"]["gen"] == "67.8" and fit["CPU"]["measured"] is None
-    # A greyed-out class keeps its measurement: it shows why the class is unsuitable.
+    # A greyed-out class still shows the result of its bounded CPU diagnostic.
     response = await client.post("/ui/new/estimate", headers={"X-CSRF-Token": CSRF},
-                                 data={"preset": "qwen38-flash-next-abl-q4k-xl", "gpu": "A100"})
+                                 data={"preset": "qwen38-27b-q4km", "gpu": "L4"})
     fit = json.loads(html.unescape(re.search(r'data-fit="([^"]*)"', response.text).group(1)))
-    assert fit["L4"]["status"] == "blocked" and fit["L4"]["measured"]["gen"] == "3.0"
+    assert fit["CPU"]["status"] == "blocked" and fit["CPU"]["measured"]["gen"] == "0.028"
     models = (await client.get("/models")).text
-    assert "Measured <strong>13.1</strong> tok/s<br>Prefill 660 tok/s" in models
+    assert "Measured <strong>14.4</strong> tok/s<br>Prefill 808 tok/s" in models
     assert "Measured: engine-reported generation speed" in models
 
 

@@ -15,7 +15,7 @@ def test_repo_presets_load():
     assert q.defaults_for("A100-80").kv == "f16"
     assert q.defaults_for("T4-HIGHMEM").ctx == 32768  # no T4 entry -> generic defaults
     # Measured on real runtimes of each class; a class that cannot run the preset has no figure.
-    assert q.measured["L4"].gen_tps == 13.1 and q.measured["L4"].prefill_tps == 660
+    assert q.measured["L4"].gen_tps == 14.449 and q.measured["L4"].prefill_tps == 807.6
     assert "CPU" not in q.measured
     assert all(preset.measured for preset in p.presets.values())
 
