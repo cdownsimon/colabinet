@@ -28,7 +28,7 @@ from .config import GPU_CLASSES, Settings, detected_class
 from .diagnostics import bounded_diagnostic
 from .engines import ENGINES, VM_ROOT, Engine, RunSpec
 from .engines.base import VM_DIR
-from .engines.strata import QWEN36_CTX, QWEN36_KV, QWEN36_REPO
+from .engines.strata import INKLING_CTX, INKLING_KV, INKLING_REPO, QWEN36_CTX, QWEN36_KV, QWEN36_REPO
 from .guards import evaluate, evaluate_daily
 from .net import first_free, port_free
 from .presets import PresetError, Presets, load_presets
@@ -316,7 +316,7 @@ class Supervisor:
         if req.engine not in self.engines:
             raise CreateRefused(f"unknown engine {req.engine!r}")
         if req.engine in ("llamacpp", "strata") and not (req.repo and req.file):
-            raise CreateRefused(f"a custom {req.engine} model needs a Hugging Face repo and a GGUF file")
+            raise CreateRefused(f"a custom {req.engine} model needs a Hugging Face repo and a model file")
         if req.engine == "exllamav3" and not (req.repo and req.revision):
             raise CreateRefused("a custom ExLlamaV3 model needs a Hugging Face repo and a revision (e.g. 4.00bpw)")
         pins = {} if isinstance(self.presets, PresetError) else self.presets.engines.get(req.engine, {})
@@ -326,6 +326,8 @@ class Supervisor:
         default_ctx = 131072 if req.engine == "strata" else 32768
         if req.engine == "strata" and req.repo == QWEN36_REPO:
             default_ctx, default_kv = QWEN36_CTX, QWEN36_KV
+        elif req.engine == "strata" and req.repo == INKLING_REPO:
+            default_ctx, default_kv = INKLING_CTX, INKLING_KV
         return RunSpec(engine=req.engine, repo=req.repo, file=req.file, revision=req.revision,
                        alias=req.alias or (req.repo.split("/")[-1] if req.engine == "strata" else req.file
                                            or req.repo.split("/")[-1]),

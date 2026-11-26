@@ -21,8 +21,9 @@ from pathlib import Path
 
 E = os.environ.get
 ROOT = Path(E("COLABINET_ROOT", "/content/colabinet"))
-RELEASE = "c77572806996349b49995e4f98d41b5294d36a21"
-SOURCE = ROOT / f"Strata-{RELEASE[:7]}"
+RELEASE = "c6f6427d9de9016fd92d13e29740f65625261df7"
+CHECKOUT = ROOT / f"Strata-{RELEASE[:7]}"
+SOURCE = CHECKOUT / "terminal"
 DATA = ROOT / "strata-data"
 EVENTS = E("EVENTS", str(ROOT / "setup.jsonl"))
 ENGINE_LOG = E("ENGINE_LOG", str(ROOT / "engine.log"))
@@ -30,16 +31,18 @@ REPO = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
 QWEN36_REPO = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF"
 QWEN36_QUANT = "UD-Q4_K_XL"
 QWEN36_FILE = f"Qwen3.6-35B-A3B-{QWEN36_QUANT}.gguf"
-# v0.2.15's release feed reuses this portable CUDA 13 build from v0.2.14.
-ENGINE_VERSION = "0.1.60"
-ENGINE_URL = ("https://github.com/Niko1221/Strata/releases/download/v0.2.14/"
-              f"strata-engine-{ENGINE_VERSION}-linux-x86_64-cuda-cuda13.tar.gz")
-ENGINE_SHA256 = "a72c194c8f6de96629ed53079b5e344ab81223d45667a53f6a6d79398895aa50"
+INKLING_REPO = "strata-engine/Inkling-2-Mini-Strata"
+ENGINE_VERSION = "0.1.65"
+RELEASE_ASSETS = "https://github.com/Niko1221/Strata/releases/download/v0.2.19"
+ENGINE_URL = f"{RELEASE_ASSETS}/strata-engine-{ENGINE_VERSION}-linux-x86_64-cuda-cuda13.tar.gz"
+ENGINE_SHA256 = "77a6fd933d41f1968c069fe04995f729128735d0fc7c53e446dd4a1f9c7fbf49"
 ENGINE_ARCHS = {75, 86, 89, 120}
+INKLING_SHA256 = "b5131c902915851098dce383c88b1c4a7418aa2a5047892882e86f6a369dbf86"
 ENGINE_PACKAGE_MARKER = ".colabinet-package-sha256"
 T0 = time.monotonic()
 STOP_PATTERNS = ("[l]lama-server", "[t]abbyAPI/main.py", "[s]erve/server.py.*--engine strata",
-                 "[/]engine/strata([ -]|$)", "[/]engine/strata-vision([ ]|$)")
+                 "[/]engine/strata([ -]|$)", "[/]engine/strata-vision([ ]|$)",
+                 "[/]inkling-engine/strata-inkling([ ]|$)")
 EVENT_LOCK = threading.Lock()
 OUTPUT_LOCK = threading.Lock()
 
@@ -145,13 +148,13 @@ def stop_engines(port):
 def checkout(release):
     if release != RELEASE:
         raise ValueError(f"unsupported Strata source: expected {RELEASE}")
-    SOURCE.mkdir(parents=True, exist_ok=True)
-    if not (SOURCE / ".git").is_dir():
-        run(["git", "init", "-q", str(SOURCE)])
-    head = subprocess.run(["git", "-C", str(SOURCE), "rev-parse", "HEAD"], capture_output=True, text=True)
+    CHECKOUT.mkdir(parents=True, exist_ok=True)
+    if not (CHECKOUT / ".git").is_dir():
+        run(["git", "init", "-q", str(CHECKOUT)])
+    head = subprocess.run(["git", "-C", str(CHECKOUT), "rev-parse", "HEAD"], capture_output=True, text=True)
     if head.returncode or head.stdout.strip() != release:
-        run(["git", "fetch", "-q", "--depth", "1", "https://github.com/Niko1221/Strata.git", release], cwd=SOURCE)
-        run(["git", "checkout", "-q", "--detach", release], cwd=SOURCE)
+        run(["git", "fetch", "-q", "--depth", "1", "https://github.com/Niko1221/Strata.git", release], cwd=CHECKOUT)
+        run(["git", "checkout", "-q", "--detach", release], cwd=CHECKOUT)
 
 
 def select_drafting(requested, choice_of, quant, gpu, args):
@@ -230,6 +233,12 @@ def prepare(env):
     env["STRATA_DRAFTING"] = drafting
     event("drafting_selected", requested=requested, selected=drafting)
     check_storage(upstream, env, low_ram)
+    python = setup_python(env)
+    event("setup_prepare_done", seconds=round(time.monotonic() - started, 1), low_ram=low_ram)
+    return python, low_ram, gpu, started
+
+
+def setup_python(env):
     python = SOURCE / ".venv" / "bin" / "python"
     if not python.exists():
         # Colab omits ensurepip. Upstream setup.sh accepts an already bootstrapped private venv.
@@ -245,8 +254,7 @@ def prepare(env):
     run([str(python), "-u", "-c", "import setup as S; "
          "S.pip_install(S.runtime_packages(), 'python packages')"],
         cwd=SOURCE, env=env, timeout=float(env.get("INSTALL_TIMEOUT", "3600")))
-    event("setup_prepare_done", seconds=round(time.monotonic() - started, 1), low_ram=low_ram)
-    return str(python), low_ram, gpu, started
+    return str(python)
 
 
 def dir_bytes(path):
@@ -310,10 +318,10 @@ def check_storage(upstream, env, low_ram):
     event("storage_check", free_gb=round(free, 1), needed_gb=round(needed, 1))
 
 
-def prebuilt_supported(gpu):
+def prebuilt_supported(gpu, archs=ENGINE_ARCHS):
     driver = tuple(int(part) for part in gpu["driver"].split(".")[:2] if part.isdecimal())
     return (sys.platform == "linux" and platform.machine() == "x86_64"
-            and int(gpu["arch"]) in ENGINE_ARCHS and driver >= (580, 65))
+            and int(gpu["arch"]) in archs and driver >= (580, 65))
 
 
 def probe_prebuilt(engine, env, cancel):
@@ -337,18 +345,21 @@ def probe_prebuilt(engine, env, cancel):
         raise RuntimeError(f"Strata package does not advertise {arch} support")
 
 
-def install_prebuilt(engine, env, cancel):
+def install_prebuilt(engine, env, cancel, *, url=None, sha256=None, probe=None):
+    url = url or ENGINE_URL
+    sha256 = sha256 or ENGINE_SHA256
+    probe = probe or probe_prebuilt
     cached = engine / ENGINE_PACKAGE_MARKER
-    if cached.is_file() and cached.read_text() == ENGINE_SHA256:
-        probe_prebuilt(engine, env, cancel)
+    if cached.is_file() and cached.read_text() == sha256:
+        probe(engine, env, cancel)
         return True
     with tempfile.TemporaryDirectory(prefix=".engine-install-", dir=SOURCE) as folder:
         archive = Path(folder) / "engine.tar.gz"
         run(["curl", "-fL", "--silent", "--show-error", "--retry", "2", "--connect-timeout", "20",
-             "--output", str(archive), ENGINE_URL],
+             "--output", str(archive), url],
             timeout=min(600, float(env.get("INSTALL_TIMEOUT", "3600"))), cancel=cancel, label="engine")
         with archive.open("rb") as stream:
-            if hashlib.file_digest(stream, "sha256").hexdigest() != ENGINE_SHA256:
+            if hashlib.file_digest(stream, "sha256").hexdigest() != sha256:
                 raise RuntimeError("Strata engine archive failed SHA-256 verification")
         staged = Path(folder) / "engine"
         with tarfile.open(archive, "r:gz") as package:
@@ -356,8 +367,8 @@ def install_prebuilt(engine, env, cancel):
                 if cancel.is_set():
                     raise RuntimeError("Strata package extraction cancelled")
                 package.extract(member, staged, filter="data")
-        probe_prebuilt(staged, env, cancel)
-        (staged / ENGINE_PACKAGE_MARKER).write_text(ENGINE_SHA256)
+        probe(staged, env, cancel)
+        (staged / ENGINE_PACKAGE_MARKER).write_text(sha256)
         if engine.exists():
             shutil.rmtree(engine)
         staged.rename(engine)
@@ -389,6 +400,98 @@ def build_engine(python, env, gpu, cancel):
     after = stamp.stat().st_mtime_ns if stamp.exists() else None
     return {"seconds": round(time.monotonic() - started, 1), "skipped": before is not None and before == after,
             "source": "source"}
+
+
+def probe_inkling(engine, env, cancel):
+    executable = engine / "strata-inkling"
+    libs = os.pathsep.join(filter(None, (str(engine), env.get("LD_LIBRARY_PATH"))))
+    probe_env = {**env, "LD_LIBRARY_PATH": libs}
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        raise RuntimeError("Strata package is missing strata-inkling")
+    linked = run(["ldd", str(executable)], env=probe_env, timeout=30, cancel=cancel, label="engine")
+    if "not found" in linked:
+        raise RuntimeError("Strata Inkling package has unresolved libraries")
+    version = run([str(executable), "--version"], env=probe_env, timeout=30, cancel=cancel, label="engine")
+    if ENGINE_VERSION not in version:
+        raise RuntimeError(f"Unexpected Strata Inkling engine version: {version.strip()}")
+
+
+def install_inkling(env, started):
+    checkout(env["STRATA_RELEASE"])
+    sys.path.insert(0, str(SOURCE))
+    try:
+        import setup as upstream
+        from strata_control import inkling_family, inkling_fit
+    finally:
+        sys.path.pop(0)
+    quant = env["STRATA_QUANT"]
+    if (env["STRATA_REPO"] != INKLING_REPO or quant not in inkling_fit.BUILDS
+            or env["STRATA_FILE"] != inkling_family.build_file(quant)):
+        raise ValueError("Strata Inkling requires a pinned native Inkling 2 Mini pack")
+    if (env["STRATA_KV"], env["STRATA_DRAFTING"], env["STRATA_PROJECTION"]) != ("fp16", "dspark", "off"):
+        raise ValueError("Strata Inkling uses FP16 KV and embedded DSpark")
+    gpu = upstream.gpu_info()
+    if not gpu or not prebuilt_supported(gpu, ENGINE_ARCHS | {80}):
+        raise RuntimeError("Inkling requires a supported Linux x86-64 NVIDIA GPU and CUDA 13 driver")
+    cpu, avx2, _ = upstream.cpu_info()
+    if not avx2:
+        raise RuntimeError(f"Strata requires an AVX2 CPU; detected {cpu}")
+    ram = upstream.ram_gb()
+    ctx = int(env["STRATA_CTX"])
+    vision = env["STRATA_VISION"] != "none"
+    placed = inkling_fit.place(quant, gpu["vram_gb"], ram, ctx=ctx, vision=vision)
+    if placed["ssd_gb"] > 0.05:
+        raise RuntimeError(f"Inkling {quant} at context {ctx} would spill about {placed['ssd_gb']} GB to disk")
+    event("gpu_info", nvidia_smi=f"{gpu['name']}, {gpu['vram_gb'] * 1024:.0f}, {gpu['driver']}", ram_gb=round(ram, 1))
+    event("inkling_fit", quant=quant, ctx=ctx, vision=vision, **placed)
+    python = setup_python(env)
+    engine = SOURCE / "inkling-engine"
+    archive = f"{RELEASE_ASSETS}/strata-inkling-{ENGINE_VERSION}-linux-x86_64-cuda-cuda13.tar.gz"
+    skipped = install_prebuilt(engine, env, threading.Event(), url=archive, sha256=INKLING_SHA256, probe=probe_inkling)
+    event("install_done", engine="strata", release=f"v0.2.19 / strata-inkling {ENGINE_VERSION}",
+          seconds=round(time.monotonic() - started, 1), skipped=skipped, source="prebuilt")
+    path = SOURCE / f"strata-inkling-2-mini-{quant.lower()}.json"
+    model_started = time.monotonic()
+    # Use the pinned upstream's weight-integrity and tokenizer preparation with the checked engine.
+    script = '''
+import json, sys
+from pathlib import Path
+from types import SimpleNamespace
+import setup as S
+from strata_control import inkling_family as F
+
+path, data, engine = map(Path, sys.argv[1:4])
+quant, alias, ctx, vision, vram, ram = sys.argv[4:]
+names = F.files_of(quant, vision == "yes")
+folder = data / "models" / F.FAMILY
+folder.mkdir(parents=True, exist_ok=True)
+options = SimpleNamespace(gguf_dir=None)
+cached = all(S.inkling_have(options, folder / name) for name in names)
+if S.free_gb(folder) < sum(F.FILES[n][0] for n in names if not S.inkling_have(options, folder / n)) / 1e9 + 1:
+    raise RuntimeError("Insufficient VM disk space for the Inkling model and vision pack")
+files = {name: S.inkling_fetch(options, name, folder, False) for name in names}
+model = files[names[0]]
+exe = engine / "strata-inkling"
+tok = S.inkling_tokenizer_dir(options, model, folder, data / "packs" / F.model_key(quant) / "tokenizer", exe, False)
+if not tok:
+    raise RuntimeError("Strata did not provision the Inkling tokenizer")
+args = ["--native", str(model), "--max-context", ctx, "--kv", "fp16",
+        "--vram-experts-gb", vram, "--ram-experts-gb", ram]
+if vision == "yes":
+    args += ["--vision", str(files[F.VISION_FILE])]
+cfg = {"exe": str(exe), "args": args, "cwd": str(S.ROOT), "tokenizer": str(tok), "model_name": alias,
+       "arch": F.ARCH, "lib_dirs": [str(engine)], "drafting": F.DEFAULT_DRAFTER, "parallel": 1}
+cfg.update(download_cached=cached, download_bytes=sum(p.stat().st_size for p in files.values()))
+path.write_text(json.dumps(cfg))
+'''
+    path.unlink(missing_ok=True)
+    run([python, "-u", "-c", script, str(path), str(DATA), str(engine), quant, env["STRATA_ALIAS"], str(ctx),
+         "yes" if vision else "no", str(placed["vram_gb"]), str(placed["ram_gb"])], cwd=SOURCE, env=env,
+        timeout=float(env.get("FINALIZE_TIMEOUT", "1800")), label="model")
+    config = json.loads(path.read_text())
+    event("download_done", file=env["STRATA_FILE"], gb=round(config["download_bytes"] / 1e9, 3),
+          seconds=round(time.monotonic() - model_started, 1), skipped=config["download_cached"])
+    return python, path, config
 
 
 def prepare_model(python, env, low_ram, cancel):
@@ -742,6 +845,11 @@ def confirm_capabilities(health, models, env, metrics):
     if health.get("images") is not wants_vision or images != wants_vision:
         raise RuntimeError("Strata health/model metadata did not confirm the requested vision capability")
     engine = metrics.get("engine", {})
+    if env.get("STRATA_FAMILY") == "inkling":
+        if (engine.get("arch"), engine.get("model"), engine.get("kv_dtype"), engine.get("drafter")) != (
+                "inkling2_loop", env["STRATA_FILE"], env["STRATA_KV"], env["STRATA_DRAFTING"]):
+            raise RuntimeError(f"Strata metrics did not confirm the requested Inkling pack, KV and DSpark: {engine}")
+        return {"vision": wants_vision}
     # Qwen3.6 has fixed FP32 KV and no projection. Its native READY protocol omits those metrics.
     if env.get("STRATA_FAMILY") != "qwen36":
         if engine.get("kv") != env["STRATA_KV"]:
@@ -835,7 +943,12 @@ def serve(python, path, config, env):
                                  env, read_json(env["STRATA_PORT"], "/metrics"))
             if time.monotonic() >= deadline:
                 raise RuntimeError("Strata load timed out before capability confirmation completed")
-            event("server_ready", seconds=round(time.monotonic() - started, 1), modalities=modalities,
+            memory = {}
+            if env.get("STRATA_FAMILY") == "inkling":
+                used = subprocess.run(["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
+                                      capture_output=True, text=True).stdout.strip()
+                memory = {"vram_used_mib": int(used)} if used.isdigit() else {}
+            event("server_ready", seconds=round(time.monotonic() - started, 1), modalities=modalities, **memory,
                   refusal_projection=env["STRATA_PROJECTION"] == "on", cmd=" ".join(config["args"]))
             return
         raise RuntimeError(f"Strata health/load timed out after {env.get('LOAD_TIMEOUT', '1800')}s: {log_tail()}")
@@ -849,7 +962,10 @@ def main():
     env = dict(os.environ)
     quant = env["STRATA_QUANT"]
     family = env.setdefault("STRATA_FAMILY", "qwen")
-    if family == "qwen36":
+    if family == "inkling":
+        if env["STRATA_VISION"] not in ("gpu", "none"):
+            raise ValueError("Inkling uses its integrated vision engine")
+    elif family == "qwen36":
         if (env["STRATA_REPO"], env["STRATA_FILE"], quant) != (QWEN36_REPO, QWEN36_FILE, QWEN36_QUANT):
             raise ValueError("Strata Qwen3.6 requires the pinned UD-Q4_K_XL MTP GGUF")
         if (env["STRATA_KV"], env["STRATA_DRAFTING"], env["STRATA_LOW_RAM"], env["STRATA_PROJECTION"]) != (
@@ -866,8 +982,13 @@ def main():
     # Upstream rejects an explicitly empty STRATA_API_KEY: remove the cleared Colab variable in the child env.
     env.pop("STRATA_API_KEY", None)
     env.pop("STRATA_PREBUILT_URL", None)
+    env.pop("STRATA_INKLING_SOURCE", None)
     env.update(HF_HUB_DISABLE_XET="1", HF_HUB_DISABLE_PROGRESS_BARS="1",
                XDG_CONFIG_HOME=str(ROOT / "strata-settings"))
+    if family == "inkling":
+        python, path, config = install_inkling(env, time.monotonic())
+        serve(python, path, config, env)
+        return
     python, low_ram, gpu, install_started = prepare(env)
     if family == "qwen36":
         result = build_engine(python, env, gpu, threading.Event())

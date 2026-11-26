@@ -38,8 +38,11 @@ Rates (CU/h) come from `colab usage` unless marked. The *(third-party)* ones are
 | `--gpu A100 --high-mem` | 6.77 | A100 **80 GB** | 179.4 GB | the RAM choice decides the card *(third-party)* |
 | `--gpu G4` | 8.90 | RTX PRO 6000 Blackwell 96 GB, fp8 + nvfp4 | 189.9 GB | |
 
-- **All runtimes:** Ubuntu 24.04, Python 3.13.15, ~236 GB ephemeral disk (~189 GB free on L4), `uv` and the
-  `hf` CLI preinstalled. Everything is wiped on stop, and there's no way to change a runtime's GPU.
+- **Runtime image:** Ubuntu 24.04, Python 3.13.15, `uv` and the `hf` CLI preinstalled in the recorded image.
+  An [independent paid-runtime sweep](https://github.com/jouyang4/AgenticColab/blob/main/docs/01-machine-shapes.md#cgroups-and-disk)
+  measured 225.8 GiB total at `/content` on CPU and 235.7 GiB on T4, L4, A100 and G4 (about 243 and 253 GB).
+  Available space varies. The Nov. 18 Strata L4 had 252.8 GB free before downloading the model.
+  Everything is wiped on stop, and there's no way to change a runtime's GPU.
 - **GPU image (2026-09-30):** torch 2.11.0+**cu128**, cuDNN 9.19, driver 580.82.07. Colab rolled a CUDA 13
   image out and back on 2026-09-24 (colabtools #6111/#6112) and has promised a second rollout. That
   matters to anything installed against torch's CUDA version, such as the ExLlamaV3 wheel. llama.cpp's

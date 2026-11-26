@@ -1,4 +1,4 @@
-"""Strata adapter for the supported Qwen GGUFs."""
+"""Strata adapter for Qwen GGUFs and native Inkling 2 Mini packs."""
 
 from __future__ import annotations
 
@@ -7,7 +7,8 @@ from pathlib import Path
 
 from .base import VM_DIR, VM_ROOT, RunSpec
 
-RELEASE = "c77572806996349b49995e4f98d41b5294d36a21"
+RELEASE = "c6f6427d9de9016fd92d13e29740f65625261df7"
+PREVIOUS_RELEASE = "c77572806996349b49995e4f98d41b5294d36a21"
 LEGACY_RELEASE = "d6708a4aae15b4860000d54c8af9e84d684bce09"
 REPO = "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF"
 QUANTS = ("IQ2_XS", "IQ3_XXS", "IQ3_S")
@@ -18,6 +19,10 @@ QWEN36_FILE = f"Qwen3.6-35B-A3B-{QWEN36_QUANT}.gguf"
 QWEN36_CTX = 8192
 QWEN36_KV = "f32"
 QWEN36_RAM_GIB = 32
+INKLING_REPO = "strata-engine/Inkling-2-Mini-Strata"
+INKLING_FILES = {f"Inkling-2-Mini-{size}.strata": size for size in ("SQ-10", "SQ-15", "SQ-20")}
+INKLING_CTX = 8192
+INKLING_KV = "fp16"
 # These options would change managed settings, route setup/server options to the engine, or replace the model.
 MANAGED_ARGS = {
     "--pack", "--native", "--ple-gguf", "--mtp", "--max-context", "--kv", "--vision", "--serve",
@@ -51,7 +56,13 @@ def _split_setup_args(args: tuple[str, ...]) -> tuple[str, str, tuple[str, ...]]
 def validate_spec(spec: RunSpec) -> None:
     """Reject unsupported requests before lifecycle allocation or mutation."""
     qwen36 = spec.repo == QWEN36_REPO
-    if qwen36:
+    inkling = spec.repo == INKLING_REPO
+    if inkling:
+        if spec.file not in INKLING_FILES or spec.kv != INKLING_KV:
+            raise ValueError("Strata Inkling 2 Mini uses a pinned SQ-10, SQ-15 or SQ-20 pack and FP16 KV")
+        if spec.refusal_projection or spec.extra_args:
+            raise ValueError("Strata Inkling 2 Mini manages DSpark. Omit refusal projection and extra args.")
+    elif qwen36:
         if spec.file != QWEN36_FILE:
             raise ValueError(f"Strata Qwen3.6 requires the pinned {QWEN36_FILE} file")
         if spec.kv != QWEN36_KV:
@@ -63,7 +74,7 @@ def validate_spec(spec: RunSpec) -> None:
                          "and exact IQ2_XS, IQ3_XXS or IQ3_S first-shard path")
     if spec.parallel != 1:
         raise ValueError("Strata supports parallel=1 only (FIFO serialized requests)")
-    if not qwen36 and spec.kv not in ("int8", "q4_0", "k8v4"):
+    if not (qwen36 or inkling) and spec.kv not in ("int8", "q4_0", "k8v4"):
         raise ValueError("Strata KV must be int8, q4_0 or k8v4")
     if not isinstance(spec.ctx, int) or isinstance(spec.ctx, bool) or not 0 < spec.ctx <= 262144:
         raise ValueError("Strata context must be a positive integer at most 262144")
@@ -72,7 +83,7 @@ def validate_spec(spec: RunSpec) -> None:
                          "are unsupported (use vision=true or false)")
     if spec.revision:
         raise ValueError("Strata upstream setup does not support model revision overrides")
-    if spec.release and spec.release not in (RELEASE, LEGACY_RELEASE):
+    if spec.release and spec.release not in (RELEASE, PREVIOUS_RELEASE, LEGACY_RELEASE):
         raise ValueError(f"Strata source must be pinned to {RELEASE}")
     if not spec.alias or not isinstance(spec.vision, bool) or not isinstance(spec.refusal_projection, bool):
         raise ValueError("Strata requires a model alias and boolean vision/refusal_projection settings")
@@ -109,19 +120,22 @@ class StrataEngine:
     def setup_env(self, spec: RunSpec, vm_port: int, run_id: int) -> dict[str, str]:
         validate_spec(spec)
         qwen36 = spec.repo == QWEN36_REPO
+        inkling = spec.repo == INKLING_REPO
         vision = ("cpu" if qwen36 else "gpu") if spec.vision else "none"
         low_ram, drafting, native_args = _split_setup_args(spec.extra_args)
+        family = "inkling" if inkling else "qwen36" if qwen36 else "qwen"
+        quant = INKLING_FILES[spec.file] if inkling else QWEN36_QUANT if qwen36 else FILES[spec.file]
         # Colab exec retains environment variables: always send explicit on/off and empty extra args.
         return {
             "SCRIPT": f"{VM_ROOT}/{self.script.name}", "OUT": f"{VM_ROOT}/setup.out",
             "EVENTS": f"{VM_ROOT}/run-{run_id}.jsonl", "ENGINE_LOG": f"{VM_ROOT}/engine.log",
             "STRATA_RELEASE": RELEASE, "STRATA_REPO": spec.repo, "STRATA_FILE": spec.file,
-            "STRATA_FAMILY": "qwen36" if qwen36 else "qwen",
-            "STRATA_QUANT": QWEN36_QUANT if qwen36 else FILES[spec.file],
+            "STRATA_FAMILY": family, "STRATA_QUANT": quant,
             "STRATA_ALIAS": spec.alias, "STRATA_PORT": str(vm_port),
             "STRATA_CTX": str(spec.ctx), "STRATA_KV": spec.kv,
             "STRATA_VISION": vision,
             "STRATA_PROJECTION": "on" if spec.refusal_projection else "off",
-            "STRATA_LOW_RAM": low_ram, "STRATA_DRAFTING": drafting, "STRATA_EXTRA_ARGS": json.dumps(list(native_args)),
+            "STRATA_LOW_RAM": low_ram, "STRATA_DRAFTING": "dspark" if inkling else drafting,
+            "STRATA_EXTRA_ARGS": json.dumps(list(native_args)),
             "STRATA_API_KEY": "", "STRATA_GPU": "",
         }

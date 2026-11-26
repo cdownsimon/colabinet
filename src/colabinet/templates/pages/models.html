@@ -42,11 +42,21 @@
       {% endfor %}
     </div>
     {% if preset.measured %}<p class="cb-footnote">{{ icon('info') }}<span>Measured: engine-reported generation speed on a short prompt and prefill on a 4K-token prompt at the preset's defaults{% set dates = preset.measured.values() | map(attribute='date') | select | unique | list %}{% if dates %} ({{ dates | join(', ') }}){% endif %}. Classes without a figure were not measured or could not run it.</span></p>{% endif %}
-    <p class="cb-footnote">{{ icon('info') }}<span>Context is the token limit; KV cache is separate from model weight quantization. {% if preset.engine == 'strata' and preset.repo == qwen36_repo %}Qwen3.6 places experts in VRAM and host RAM. This preset uses fixed FP32 KV and CPU vision.{% elif preset.engine == 'strata' %}Strata uses a GPU expert cache plus host RAM and a shared 28.8 GB PLE table; download size is not VRAM residency. Badges describe recorded GPU evidence, not estimated residency or a full-context guarantee.{% else %}Fit is advisory{% if preset.engine == 'llamacpp' %}; CPU offload needs sufficient host RAM{% endif %}{% if preset.mmproj or preset.vision %}; vision workspace is not included{% endif %}.{% endif %}</span></p>
+    <p class="cb-footnote">{{ icon('info') }}<span>Context is the token limit; KV cache is separate from model weight quantization. {% if preset.engine == 'strata' and preset.repo == qwen36_repo %}Qwen3.6 places experts in VRAM and host RAM. This preset uses fixed FP32 KV and CPU vision.{% elif preset.engine == 'strata' and preset.repo == inkling_repo %}Inkling 2 Mini places experts in GPU and host memory, with FP16 KV and embedded DSpark.{% elif preset.engine == 'strata' %}Strata uses a GPU expert cache plus host RAM and a shared 28.8 GB PLE table; download size is not VRAM residency. Badges describe recorded GPU evidence, not estimated residency or a full-context guarantee.{% else %}Fit is advisory{% if preset.engine == 'llamacpp' %}; CPU offload needs sufficient host RAM{% endif %}{% if preset.mmproj or preset.vision %}; vision workspace is not included{% endif %}.{% endif %}</span></p>
     {% set benchmarks = preset.evidence.items() | selectattr('1.performance') | list %}
     <dl class="cb-kv cb-perf">
       <dt>Local requests</dt><dd>{% for bucket in item.measured %}{{ bucket.gpu }}: <strong>{{ bucket.tps | num(1) }} t/s</strong> median ({{ bucket.n }} req, {{ bucket.out | num }} tokens out){% if not loop.last %} · {% endif %}{% else %}<span class="cb-muted">not used yet</span>{% endfor %}</dd>
       {% for gpu, evidence in benchmarks %}<dt>Saved benchmarks · {{ gpu }}</dt><dd>{{ evidence.performance }}</dd>{% endfor %}
+      {% for row in inkling_benchmark.rows if row.preset_id == preset.id and row.arms %}
+      <dt>Colab v{{ inkling_benchmark.strata_version }} · {{ row.gpu }}</dt>
+      <dd>
+        {% for mode, label in [('off', 'DSpark off'), ('dspark', 'DSpark on')] if row.arms.get(mode) %}
+        {% set measured = row.arms[mode] %}
+        {{ label }} <strong>{{ measured.generation_tps | num(1) }} tok/s generation</strong>{% if measured.prefill_tps is not none %}, {{ measured.prefill_tps | num(0) }} tok/s prefill{% endif %}{% if not loop.last %} · {% endif %}
+        {% endfor %}
+        · <a href="/metrics#inkling-colab-benchmark">Benchmark details</a>
+      </dd>
+      {% endfor %}
     </dl>
     {% if benchmarks %}<p class="cb-footnote">{{ icon('info') }}<span>Saved native decode rates exclude prompt processing and are separate from local requests. Each profile has one measured pass across the listed input lengths; settings and cache state differ. These samples do not establish a projection speedup. Expand Benchmark evidence for sources and setup details.</span></p>{% endif %}
     {% if preset.evidence %}<details class="cb-details"><summary>Benchmark evidence</summary><dl class="cb-kv">{% for gpu, evidence in preset.evidence.items() %}<dt>{{ gpu }}</dt><dd>{{ evidence.message }}</dd>{% endfor %}</dl></details>{% endif %}

@@ -217,7 +217,7 @@ async def test_retry_keeps_projection_and_does_not_replace_the_run(supervisor, m
 
 
 def test_current_presets_and_legacy_run_specs_use_the_new_strata_pin(supervisor):
-    expected = "c77572806996349b49995e4f98d41b5294d36a21"
+    expected = "c6f6427d9de9016fd92d13e29740f65625261df7"
     assert supervisor.presets.engines["strata"]["release"] == RELEASE == expected
     for preset in supervisor.presets.presets.values():
         if preset.engine == "strata":
@@ -225,7 +225,7 @@ def test_current_presets_and_legacy_run_specs_use_the_new_strata_pin(supervisor)
             assert spec.release == expected
             env = StrataEngine().setup_env(dataclasses.replace(spec, release=LEGACY_RELEASE), 8090, 1)
             assert env["STRATA_RELEASE"] == expected
-            assert env["STRATA_DRAFTING"] == "mtp"
+            assert env["STRATA_DRAFTING"] == ("dspark" if env["STRATA_FAMILY"] == "inkling" else "mtp")
 
 
 @pytest.mark.parametrize("preset_id", [QWEN36_PRESET, None])

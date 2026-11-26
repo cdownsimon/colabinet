@@ -10,7 +10,7 @@ wheel = "1.6.7"
 tabbyapi_commit = "47281587fafbd69e50aaf77c7626f390811126b6"
 
 [engines.strata]
-release = "c77572806996349b49995e4f98d41b5294d36a21"  # Strata v0.2.15
+release = "c6f6427d9de9016fd92d13e29740f65625261df7"  # Strata v0.2.19
 
 [[preset]]
 id = "qwen38-27b-abl-q4k"
@@ -463,3 +463,97 @@ T4-HIGHMEM = { gen_tps = 53.335, prefill_tps = 760.3, date = "2026-11-19", note 
 L4 = { gen_tps = 65.41, prefill_tps = 1611.17, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.60" }
 A100 = { gen_tps = 135.078, prefill_tps = 6402.96, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
 A100-80 = { gen_tps = 139.787, prefill_tps = 6471.44, date = "2026-11-19", note = "3 warmed requests, Strata 0.1.61" }
+
+
+[[preset]]
+id = "inkling-2-mini-sq-10"
+engine = "strata"
+label = "Inkling 2 Mini SQ-10 (+vision)"
+repo = "strata-engine/Inkling-2-Mini-Strata"
+file = "Inkling-2-Mini-SQ-10.strata"
+alias = "inkling-2-mini-sq-10"
+weights_gb = 10.4715264
+licence = "Apache-2.0"
+vision = true
+
+[preset.gpu.default]
+ctx = 8192
+kv = "fp16"
+
+[preset.measured]  # docs/benchmarks/2026-11-23-colab-inkling-2-mini.md
+T4 = { gen_tps = 16.855, prefill_tps = 395.39, date = "2026-11-23", note = "3 warmed requests, strata-inkling 0.1.65" }
+
+[preset.evidence.T4]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 12,551 of 15,360 MiB VRAM in the November 23 Colab benchmark."
+
+
+[[preset]]
+id = "inkling-2-mini-sq-15"
+engine = "strata"
+label = "Inkling 2 Mini SQ-15 (+vision)"
+repo = "strata-engine/Inkling-2-Mini-Strata"
+file = "Inkling-2-Mini-SQ-15.strata"
+alias = "inkling-2-mini-sq-15"
+weights_gb = 14.348316672
+licence = "Apache-2.0"
+vision = true
+
+[preset.gpu.default]
+ctx = 8192
+kv = "fp16"
+
+[preset.measured]  # docs/benchmarks/2026-11-23-colab-inkling-2-mini.md
+T4 = { gen_tps = 5.858, prefill_tps = 384.23, date = "2026-11-23", note = "3 warmed requests, strata-inkling 0.1.65" }
+T4-HIGHMEM = { gen_tps = 8.123, prefill_tps = 402.33, date = "2026-11-23", note = "3 warmed requests, strata-inkling 0.1.65" }
+L4 = { gen_tps = 32.189, prefill_tps = 926.48, date = "2026-11-23", note = "2 warmed requests, strata-inkling 0.1.65" }
+A100 = { gen_tps = 58.82, prefill_tps = 2518.06, date = "2026-11-23", note = "2 warmed requests, strata-inkling 0.1.65" }
+
+[preset.evidence.T4]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 14,623 of 15,360 MiB VRAM in the November 23 Colab benchmark."
+
+[preset.evidence.T4-HIGHMEM]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 14,623 of 15,360 MiB VRAM in the November 23 Colab benchmark."
+
+[preset.evidence.L4]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 16,340 of 23,034 MiB VRAM in the November 23 Colab benchmark."
+
+[preset.evidence.A100]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 16,574 of 40,960 MiB VRAM in the November 23 Colab benchmark."
+
+
+[[preset]]
+id = "inkling-2-mini-sq-20"
+engine = "strata"
+label = "Inkling 2 Mini SQ-20 (+vision)"
+repo = "strata-engine/Inkling-2-Mini-Strata"
+file = "Inkling-2-Mini-SQ-20.strata"
+alias = "inkling-2-mini-sq-20"
+weights_gb = 19.346685952
+licence = "Apache-2.0"
+vision = true
+
+[preset.gpu.default]
+ctx = 8192
+kv = "fp16"
+
+[preset.measured]  # docs/benchmarks/2026-11-23-colab-inkling-2-mini.md
+L4 = { gen_tps = 31.341, prefill_tps = 787.71, date = "2026-11-23", note = "3 warmed requests, strata-inkling 0.1.65" }
+A100 = { gen_tps = 73.968, prefill_tps = 2518.86, date = "2026-11-23", note = "2 warmed requests, strata-inkling 0.1.65" }
+A100-80 = { gen_tps = 78.519, prefill_tps = 2552.22, date = "2026-11-23", note = "2 warmed requests, strata-inkling 0.1.65" }
+
+[preset.evidence.L4]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 21,096 of 23,034 MiB VRAM in the November 23 Colab benchmark."
+
+[preset.evidence.A100]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 21,330 of 40,960 MiB VRAM in the November 23 Colab benchmark."
+
+[preset.evidence.A100-80]
+status = "tested"
+message = "Loaded with 8K context, FP16 KV, vision and DSpark. Readiness used 21,330 of 81,920 MiB VRAM in the November 23 Colab benchmark."

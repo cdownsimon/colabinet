@@ -133,7 +133,8 @@ spends no compute units; Control-C cleans everything up.
 ## Models and GPUs
 
 Presets in [`presets.toml`](presets.toml) include Qwen3.8-27B as llama.cpp GGUF and ExLlamaV3 EXL3,
-Qwen3.8-Flash-Next as llama.cpp GGUF and three Strata quants, and Qwen3.6-35B-A3B as Strata UD-Q4_K_XL.
+Qwen3.8-Flash-Next as llama.cpp GGUF and three Strata quants, Qwen3.6-35B-A3B as Strata UD-Q4_K_XL,
+and Inkling 2 Mini as native Strata SQ-10, SQ-15 and SQ-20 packs.
 Each preset sets per-GPU context and KV-cache defaults and records speeds measured on real runtimes.
 Any other Hugging Face model can be launched from New session; Models then offers a TOML snippet to save it as
 a preset.
@@ -152,6 +153,18 @@ The November 19, 2026 sweep measured generation and prefill on Colab. The
 [live Colab preset matrix](docs/benchmarks/2026-11-19-colab-preset-matrix.md) has both speeds for each preset,
 including the llama.cpp Flash-Next results. Rates and allocations vary by account and over time.
 See [engines and presets](docs/engines.md) for the preset format, fit rules and engine options.
+
+The [Inkling 2 Mini Colab benchmark](docs/benchmarks/2026-11-23-colab-inkling-2-mini.md) records generation,
+prefill and VRAM for the native Strata packs on v0.2.19 at 8K context.
+
+<!-- inkling-dspark-benchmark -->
+The [Inkling 2 Mini DSpark comparison](docs/benchmarks/2026-11-23-colab-inkling-dspark.md) uses Strata v0.2.20. The medians below show generation in tok/s with DSpark off and on where both were measured.
+
+- T4 SQ-10 19.9 / 22.9
+- T4-HIGHMEM SQ-10 20.8 / 21.9
+- L4 SQ-15 34.1 / 38.0
+- L4 SQ-20 with DSpark on at 39.0 tok/s generation and 816 tok/s prefill
+<!-- /inkling-dspark-benchmark -->
 
 ## Safety, cost and privacy
 

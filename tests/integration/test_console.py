@@ -36,8 +36,10 @@ async def console(tmp_path):
 
 PAGES = {"/": ["Overview", "Sessions", "CU per day", "Activity"],
          "/sessions": ["Live", "History"], "/new": ["1 · GPU", "Create…", "L4"],
-         "/playground": ["Playground", "Send"], "/metrics": ["Builder", "SQL (read-only)", "Group by"],
-         "/models": ["Qwen3.8-27B abliterated Q4_K", "fit (preset defaults)", "EXL3"],
+         "/playground": ["Playground", "Send"],
+         "/metrics": ["Builder", "SQL (read-only)", "Group by", "39.0 tok/s generation", "816 tok/s prefill"],
+         "/models": ["Qwen3.8-27B abliterated Q4_K", "fit (preset defaults)", "EXL3",
+                     "Colab v0.2.20 · L4", "39.0 tok/s generation", "816 tok/s prefill"],
          "/settings": ["Daily CU cap", "GPU rates", "0.7.4"]}
 
 

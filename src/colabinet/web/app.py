@@ -19,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 from ..api import parse_deadline
 from ..config import GPU_CLASSES, PACKAGE_DIR, VRAM_GB
 from ..diagnostics import redact_diagnostic
+from ..engines.strata import INKLING_REPO, QWEN36_REPO
 from ..fit import hf_file_gb
 from ..metrics import CHARTS, GROUPS, MEASURES, TIME_PRESETS, QueryError, QuerySpec, to_csv
 from ..presets import PresetError
@@ -28,6 +29,7 @@ from .login import GoogleLogin, LoginError
 
 TEMPLATES_DIR = PACKAGE_DIR / "templates"
 STATIC_DIR = PACKAGE_DIR / "static"
+INKLING_BENCHMARK = json.loads((PACKAGE_DIR / "inkling_benchmark.json").read_text(encoding="utf-8"))
 PLAYGROUND_UA = "colabinet-playground"
 TOAST_STATES = {"ready": ("success", "is ready"), "stopped": ("info", "stopped"),
                 "setup_failed": ("error", "setup failed"), "engine_down": ("error", "engine is down"),
@@ -83,13 +85,13 @@ def _when(timestamp: float | None) -> str:
 
 
 def make_templates() -> Jinja2Templates:
-    from ..engines.strata import QWEN36_REPO
-
     templates = Jinja2Templates(directory=TEMPLATES_DIR)
     env = templates.env
     env.filters.update(ago=_ago, dur=_dur, num=_num, when=_when, day=views.now_str, tojson_attr=json.dumps)
     env.globals.update(gpu_classes=GPU_CLASSES, vram=VRAM_GB, state_variant=views.state_variant)
     env.globals["qwen36_repo"] = QWEN36_REPO
+    env.globals["inkling_repo"] = INKLING_REPO
+    env.globals["inkling_benchmark"] = INKLING_BENCHMARK
     return templates
 
 
@@ -382,7 +384,8 @@ def mount_ui(app: FastAPI, sup: Supervisor, csrf: str) -> None:
                 daily["minutes_left"] = max(0.0, left / rate * 60)
             return partial(request, "partials/new_estimate.html", fit=fit, fit_display=fit, gpu_fit=fits,
                            suggest=suggest, cost=cost, daily=daily, gpu=gpu,
-                           ctx=ctx, kv=kv, preset=preset, engine=engine, refusal_projection=projection)
+                           ctx=ctx, kv=kv, preset=preset, engine=engine, refusal_projection=projection,
+                           inkling=engine == "strata" and (preset.repo if preset else form.get("repo")) == INKLING_REPO)
         except (ValueError, TypeError):
             return JSONResponse({"error": "check context, KV cache and cost fields"}, 409)
 

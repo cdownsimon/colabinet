@@ -1,0 +1,141 @@
+{
+  "date": "2026-11-24",
+  "strata_version": "0.2.20",
+  "engine_version": "0.1.66",
+  "temperature": 1.0,
+  "context": 8192,
+  "kv": "fp16",
+  "rows": [
+    {
+      "gpu": "T4",
+      "pack": "SQ-10",
+      "preset_id": "inkling-2-mini-sq-10",
+      "arms": {
+        "off": {
+          "generation_tps": 19.85,
+          "prefill_tps": 442.75,
+          "visible_ttft_ms": 461,
+          "vram_mib": 11493,
+          "drafts_offered": 0,
+          "drafts_accepted": 0,
+          "draft_accept_pct": null,
+          "warm_count": 4,
+          "long_count": 2
+        },
+        "dspark": {
+          "generation_tps": 22.85,
+          "prefill_tps": 444.4,
+          "visible_ttft_ms": 508,
+          "vram_mib": 12523,
+          "drafts_offered": 2129,
+          "drafts_accepted": 751,
+          "draft_accept_pct": 35.3,
+          "warm_count": 4,
+          "long_count": 2
+        }
+      },
+      "status": "Measured"
+    },
+    {
+      "gpu": "T4-HIGHMEM",
+      "pack": "SQ-10",
+      "preset_id": "inkling-2-mini-sq-10",
+      "arms": {
+        "off": {
+          "generation_tps": 20.75,
+          "prefill_tps": 411.55,
+          "visible_ttft_ms": 431,
+          "vram_mib": 11493,
+          "drafts_offered": 0,
+          "drafts_accepted": 0,
+          "draft_accept_pct": null,
+          "warm_count": 4,
+          "long_count": 2
+        },
+        "dspark": {
+          "generation_tps": 21.9,
+          "prefill_tps": 414.05,
+          "visible_ttft_ms": 525,
+          "vram_mib": 12523,
+          "drafts_offered": 2129,
+          "drafts_accepted": 751,
+          "draft_accept_pct": 35.3,
+          "warm_count": 4,
+          "long_count": 2
+        }
+      },
+      "status": "Measured"
+    },
+    {
+      "gpu": "L4",
+      "pack": "SQ-15",
+      "preset_id": "inkling-2-mini-sq-15",
+      "arms": {
+        "off": {
+          "generation_tps": 34.1,
+          "prefill_tps": 935.35,
+          "visible_ttft_ms": 175,
+          "vram_mib": 15358,
+          "drafts_offered": 0,
+          "drafts_accepted": 0,
+          "draft_accept_pct": null,
+          "warm_count": 4,
+          "long_count": 2
+        },
+        "dspark": {
+          "generation_tps": 38.0,
+          "prefill_tps": 909.4,
+          "visible_ttft_ms": 184,
+          "vram_mib": 16388,
+          "drafts_offered": 2637,
+          "drafts_accepted": 798,
+          "draft_accept_pct": 30.3,
+          "warm_count": 4,
+          "long_count": 2
+        }
+      },
+      "status": "Measured"
+    },
+    {
+      "gpu": "L4",
+      "pack": "SQ-20",
+      "preset_id": "inkling-2-mini-sq-20",
+      "date": "2026-11-24",
+      "arms": {
+        "dspark": {
+          "generation_tps": 39.0,
+          "prefill_tps": 816.35,
+          "visible_ttft_ms": 193,
+          "vram_mib": 21144,
+          "drafts_offered": 2244,
+          "drafts_accepted": 788,
+          "draft_accept_pct": 35.1,
+          "warm_count": 4,
+          "long_count": 2
+        }
+      },
+      "status": "DSpark on measured"
+    },
+    {
+      "gpu": "A100",
+      "pack": "SQ-20",
+      "preset_id": "inkling-2-mini-sq-20",
+      "arms": {},
+      "status": "Allocation unavailable (Nov. 26)"
+    },
+    {
+      "gpu": "A100-80",
+      "pack": "SQ-20",
+      "preset_id": "inkling-2-mini-sq-20",
+      "arms": {},
+      "status": "Allocation unavailable (Nov. 26)"
+    },
+    {
+      "gpu": "G4",
+      "pack": "SQ-20",
+      "preset_id": "inkling-2-mini-sq-20",
+      "arms": {},
+      "status": "Allocation unavailable (Nov. 26)"
+    }
+  ]
+}

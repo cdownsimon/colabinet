@@ -6,7 +6,7 @@ colabinet runs one of three inference engines on the Colab VM, each behind the s
 |---|---|---|
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` | GGUF | prebuilt CUDA 12.8 binary; offloads layers to the CPU when VRAM runs out; vision through an `mmproj` projector |
 | [ExLlamaV3](https://github.com/turboderp-org/exllamav3) via [TabbyAPI](https://github.com/theroyallab/tabbyAPI) | EXL3 | GPU only; fast, but weights and cache must fit in VRAM |
-| [Strata](https://github.com/Niko1221/Strata) | GSQ-RCO GGUF | keeps experts in host RAM and caches a subset in VRAM; one sequence at a time |
+| [Strata](https://github.com/Niko1221/Strata) | Qwen GGUF, native Inkling `.strata` | places experts in GPU and host memory. Colabinet serves one sequence at a time. |
 
 Engine versions are pinned in the `[engines]` table of `presets.toml`.
 
@@ -25,9 +25,12 @@ a malformed file is reported there and never stops the console.
 | `qwen38-flash-next-strata-iq2-xs` | Strata | 68.0 GB download | T4-HIGHMEM, L4, A100, A100-80, G4 |
 | `qwen38-flash-next-strata-iq3-xxs` | Strata | 75.8 GB download | T4-HIGHMEM, L4, A100, A100-80, G4 |
 | `qwen38-flash-next-strata-iq3-s` | Strata | 83.6 GB download | T4-HIGHMEM, L4, A100, A100-80, G4 |
+| `qwen36-35b-a3b-strata-ud-q4-k-xl` | Strata | 23.75 GB with vision | T4-HIGHMEM, L4, A100, A100-80 |
+| `inkling-2-mini-sq-10` | Strata | 10.47 GB + vision | T4 and larger |
+| `inkling-2-mini-sq-15` | Strata | 14.35 GB + vision | T4 and larger |
+| `inkling-2-mini-sq-20` | Strata | 19.35 GB + vision | L4 and larger |
 
-`abl` presets use the Huihui abliterated weights; the others use the original Qwen3.8 weights. Each model's
-licence is shown on the Models page; review the model card before use.
+Qwen3.8 presets with `abl` in their ID use Huihui abliterated weights. The Models page shows each model's licence.
 
 ### `presets.toml` reference
 
@@ -108,7 +111,7 @@ unless it cannot run the model. The Models page shows the same verdicts, plus ea
 
 ## Strata
 
-Strata is pinned to [v0.2.15](https://github.com/Niko1221/Strata/releases/tag/v0.2.15) at `c775728`.
+Strata is pinned to [v0.2.19](https://github.com/Niko1221/Strata/releases/tag/v0.2.19) at `c6f6427`.
 It needs an NVIDIA GPU, an AVX2 host CPU and driver 580+, and serves one sequence at a time.
 
 ### Qwen3.8 Flash-Next
@@ -132,8 +135,8 @@ The three Flash-Next presets use the original
   it is page cache, not locked memory. Avoid `--ple-io mmap` on memory-tight L4 allocations, where a long-prompt
   trial aborted.
 - **Setup** prepares the engine, model and selected drafter concurrently. On compatible Linux x86-64 VMs,
-  it verifies and caches the release's CUDA 13 engine and vision package (0.1.60). Unsupported GPUs or a
-  package download or validation failure use a build from the pinned source (0.1.61). A failed setup branch
+  it verifies and caches the release's CUDA 13 engine and vision package (0.1.65). Unsupported GPUs or a
+  package download or validation failure use a build from the pinned source. A failed setup branch
   cancels its siblings. Downloads and builds consume CU while the runtime is active.
 - **Monitoring** checks the loaded model too, because upstream `/health` can stay HTTP 200 after the native
   engine dies.
@@ -161,6 +164,15 @@ and defaults to 8K context, FP32 KV and CPU vision. With vision it downloads 23.
 32 GiB of host RAM and uses the upstream Qwen3.6 context fit check. Strata places experts automatically across VRAM
 and host RAM and reads MTP from the GGUF. The Nov. 19 Colab L4 smoke test verified the default configuration,
 streamed text with usage, and an image request through the CPU encoder.
+
+### Inkling 2 Mini
+
+The `inkling-2-mini-sq-10`, `inkling-2-mini-sq-15`, and `inkling-2-mini-sq-20` presets use the
+[native Strata packs](https://huggingface.co/strata-engine/Inkling-2-Mini-Strata) and a separately verified
+`strata-inkling` 0.1.65 CUDA engine. They launch with 8K context, FP16 KV, embedded DSpark and the 0.64 GB vision
+pack. The VM checks expert placement against available VRAM and host RAM, and rejects configurations that would
+spill experts to disk. The setup checks the loaded pack, context, vision capability, KV type and draft mode before
+the session becomes ready.
 
 ## Vision requests
 
