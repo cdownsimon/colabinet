@@ -18,7 +18,7 @@
 </div>
 <dl class="cb-kv cb-review" id="cost-lines" data-summary="{{ gpu }} at {{ cost.rate | num(2) }} CU/h{% if cost.idle %}, idle stop {{ cost.idle }} min{% endif %}{% if cost.cap %}, cap {{ cost.cap }} CU{% endif %}{% if inkling %}. Inkling 2 Mini with integrated vision and DSpark{% elif engine == 'strata' %}. Strata: GPU vision, single sequence, experimental refusal projection {{ 'on (reduces refusals and changes behavior; no uncensored guarantee)' if refusal_projection else 'off' }}{% endif %}">
   <dt>Rate</dt><dd><strong>{{ cost.rate | num(2) }} CU/h</strong></dd>
-  {% if fit.measured %}{% set m = fit.measured %}<dt>Measured</dt><dd><strong>{{ m.gen }} tok/s</strong> generation{% if m.prefill %}, {{ m.prefill }} tok/s prefill on a 4K-token prompt{% endif %}, on {{ gpu }} at the preset's defaults{% if m.date %} ({{ m.date }}){% endif %}.{% if m.note %} {{ m.note[:1] | upper }}{{ m.note[1:] }}.{% endif %}</dd>{% endif %}
+  {% if fit.measured %}{% set m = fit.measured %}<dt>Measured</dt><dd><strong>{{ m.gen }} tok/s</strong> generation{% if m.prefill %}, {{ m.prefill }} tok/s prefill on a {% if inkling %}~4,800{% else %}4K{% endif %}-token prompt{% endif %}, on {{ gpu }} at the preset's defaults{% if m.date %} ({{ m.date }}){% endif %}.{% if m.note %} {{ m.note[:1] | upper }}{{ m.note[1:] }}.{% endif %}</dd>{% endif %}
   <dt>Licence</dt><dd>{{ preset.licence if preset and preset.licence else 'Review the model card before use' }}</dd>
   <dt>Setup</dt><dd>Installation and download time is billed, even before the endpoint is ready.</dd>
   <dt>Endpoint port</dt><dd>{{ cost.endpoint }}</dd>
