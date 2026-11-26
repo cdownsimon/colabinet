@@ -125,4 +125,35 @@ GROUP BY gpu, model, kv ORDER BY gen_p50 DESC</textarea>
     </section>
   </div>
 </div>
+<section class="card cb-results" id="inkling-colab-benchmark">
+  <header>
+    {{ card_title('Inkling 2 Mini on Colab', 'gauge') }}
+    <p>{{ inkling_benchmark.date }} · Strata {{ inkling_benchmark.strata_version }} ·
+      engine {{ inkling_benchmark.engine_version }} · temperature {{ inkling_benchmark.temperature }} ·
+      {{ inkling_benchmark.context | num(0) }}-token context · {{ inkling_benchmark.kv | upper }} KV</p>
+  </header>
+  <section class="table-container">
+    <table class="table">
+      <thead><tr><th scope="col">GPU</th><th scope="col">Pack</th><th scope="col">DSpark off</th>
+        <th scope="col">DSpark on</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {% for row in inkling_benchmark.rows %}
+        <tr>
+          <th scope="row">{{ row.gpu }}</th>
+          <td>{{ row.pack }}</td>
+          {% for mode in ['off', 'dspark'] %}
+          {% set measured = row.arms.get(mode) %}
+          <td>{% if measured %}
+            {{ measured.generation_tps | num(1) }} tok/s generation
+            {% if measured.prefill_tps is not none %}<br>{{ measured.prefill_tps | num(0) }} tok/s prefill{% endif %}
+            {% else %}—{% endif %}</td>
+          {% endfor %}
+          <td>{{ row.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</section>
+
 {% endblock %}

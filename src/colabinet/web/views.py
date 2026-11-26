@@ -10,7 +10,16 @@ from typing import Any
 
 from .. import billing
 from ..config import GPU_CLASSES, SYSTEM_RAM_GB, VRAM_GB
-from ..engines.strata import QWEN36_CTX, QWEN36_FILE, QWEN36_KV, QWEN36_QUANT, QWEN36_RAM_GIB
+from ..engines.strata import (
+    INKLING_CTX,
+    INKLING_FILES,
+    INKLING_KV,
+    QWEN36_CTX,
+    QWEN36_FILE,
+    QWEN36_KV,
+    QWEN36_QUANT,
+    QWEN36_RAM_GIB,
+)
 from ..fit import EXL3_OVERHEAD_GB, OVERHEAD_GB, Fit, estimate, kv_gb
 from ..metrics import cu_by_group
 from ..presets import Measured, Preset, PresetError
@@ -227,9 +236,14 @@ def fit_presentation(engine: str, fit: Fit, preset: Preset | None, gpu: str,
         evidence = preset.evidence.get(gpu) if preset else None
         if evidence:
             label, variant = _EVIDENCE_BADGES[evidence.status]
-            return {"label": label, "variant": variant,
-                    "message": evidence.message + " Recorded evidence is not a RAM/VRAM estimate or a guarantee "
-                               "for the requested context, PLE mode or refusal projection."}
+            limits = (" Available memory and context affect fit." if strata_quant in INKLING_FILES.values()
+                      else " Recorded evidence is not a RAM/VRAM estimate or a guarantee "
+                           "for the requested context, PLE mode or refusal projection.")
+            return {"label": label, "variant": variant, "message": evidence.message + limits}
+        if strata_quant in INKLING_FILES.values():
+            return {"label": "Not benchmarked", "variant": "outline",
+                    "message": "Inkling 2 Mini can place experts in GPU and host memory. Fit depends on the "
+                               "pack, context length and available memory."}
         if strata_quant == QWEN36_QUANT:
             return {"label": "Not benchmarked", "variant": "outline",
                     "message": "Qwen3.6 places experts in VRAM and host RAM. This preset uses CPU vision."}
@@ -349,6 +363,8 @@ def fit_matrix(preset, host_ram: dict[str, float] | None = None) -> list[dict[st
 def strata_quant(file: str | None) -> str | None:
     if file == QWEN36_FILE:
         return QWEN36_QUANT
+    if file in INKLING_FILES:
+        return INKLING_FILES[file]
     return file.split("/", 1)[0] if file and file.split("/", 1)[0] in STRATA_MODELS else None
 
 
@@ -366,6 +382,8 @@ def session_fit(engine: str, preset: Preset | None, gpus: list[str], host_ram: d
     default_ctx = QWEN36_CTX if quant == QWEN36_QUANT else 131072 if strata else 32768
     default_kv = QWEN36_KV if quant == QWEN36_QUANT else {
         "exllamav3": "FP16", "strata": "int8"}.get(engine, "f16")
+    if quant in INKLING_FILES.values():
+        default_ctx, default_kv = INKLING_CTX, INKLING_KV
     out = {}
     for gpu in gpus:
         defaults = preset.defaults_for(gpu) if preset else None
@@ -434,9 +452,12 @@ def custom_preset_toml(run: dict[str, Any]) -> str:
     key = "file" if run["engine"] in ("llamacpp", "strata") else "revision"
     settings = ""
     if run["engine"] == "strata":
-        settings = ('vision = true\n\n[preset.gpu.default]\nctx = 8192\nkv = "f32"\n'
-                    if run["file_or_rev"] == QWEN36_FILE
-                    else 'vision = true\n\n[preset.gpu.A100]\nctx = 131072\nkv = "int8"\n')
+        if run["file_or_rev"] in INKLING_FILES:
+            settings = f'vision = true\n\n[preset.gpu.default]\nctx = {INKLING_CTX}\nkv = "{INKLING_KV}"\n'
+        elif run["file_or_rev"] == QWEN36_FILE:
+            settings = 'vision = true\n\n[preset.gpu.default]\nctx = 8192\nkv = "f32"\n'
+        else:
+            settings = 'vision = true\n\n[preset.gpu.A100]\nctx = 131072\nkv = "int8"\n'
     return (f'[[preset]]\nid = "{ident}"\nengine = "{run["engine"]}"\nlabel = "{run["alias"] or run["repo"]}"\n'
             f'repo = "{run["repo"]}"\n{key} = "{run["file_or_rev"]}"\nalias = "{run["alias"]}"\n{settings}')
 
